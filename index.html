@@ -229,6 +229,16 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 .ing-table tr:last-child td{border-bottom:none;}
 .ing-table tr:hover td{background:var(--bg2);}
 .ing-inp{width:85px;font-size:11px;text-align:right;border:1.5px solid var(--border);border-radius:var(--r);padding:4px 7px;background:#fff;color:var(--text);font-family:var(--mono);}
+.ing-del{background:none;border:1.5px solid var(--border);color:var(--danger-bd);border-radius:var(--r);padding:3px 6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;}
+.ing-del:hover{background:var(--danger-bg);border-color:var(--danger-bd);}
+.add-ing{padding:12px 14px;border-top:1.5px solid var(--border);background:var(--accent-bg);}
+.add-ing-title{font-size:9px;font-weight:600;color:var(--accent);letter-spacing:0.06em;display:flex;align-items:center;gap:5px;margin-bottom:9px;}
+.add-ing-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.add-ing-row input{font-size:11px;border:1.5px solid var(--border);border-radius:var(--r);padding:6px 9px;background:#fff;color:var(--text);}
+.add-ing-row #ni-nombre{flex:1;min-width:200px;}
+.add-ing-row #ni-kg{width:90px;text-align:right;font-family:var(--mono);}
+.add-ing-row #ni-cod{width:120px;font-family:var(--mono);}
+.add-ing-help{font-size:9px;color:var(--text2);margin-top:7px;line-height:1.4;}
 .ing-inp:focus{outline:none;border-color:var(--border2);}
 .ing-inp.changed{border-color:var(--blue-bd);background:var(--blue-bg);}
 .save-bar{display:flex;align-items:center;gap:10px;padding:11px 14px;border-top:1.5px solid var(--border);background:var(--bg2);}
@@ -522,7 +532,8 @@ const RECETAS=[
 // XMAP: código x → {id interno, excelNombre exacto para matching}
 // Para códigos numéricos: match por [XXXX] extraído del "Nombre mostrado"
 // Para claves de texto: match por nombre exacto normalizado
-const XMAP={};
+let XMAP={};
+function rebuildXMAP(){XMAP={};for(const r of RECETAS)for(const i of r.ingredientes){if(i.x&&!XMAP[i.x])XMAP[i.x]={id:i.id,nombre:i.nombre};}}
 for(const r of RECETAS)for(const i of r.ingredientes){
   if(i.x&&!XMAP[i.x])XMAP[i.x]={id:i.id,nombre:i.nombre};
 }
@@ -578,7 +589,7 @@ function collectState(){
   return {
     stock, stockDate, prog, proveedores, pedidos,
     recetas: RECETAS.map(r=>({id:r.id,nombre:r.nombre,pesoMasa:r.pesoMasa,
-      ing:r.ingredientes.map(i=>({id:i.id,kgMasa:i.kgMasa}))}))
+      ing:r.ingredientes.map(i=>({id:i.id,nombre:i.nombre,kgMasa:i.kgMasa,x:i.x||''}))}))
   };
 }
 function applyState(s){
@@ -592,11 +603,17 @@ function applyState(s){
     const r=RECETAS.find(x=>x.id===sr.id);if(!r)continue;
     if(sr.nombre)r.nombre=sr.nombre;
     if(sr.pesoMasa!=null)r.pesoMasa=sr.pesoMasa;
-    if(Array.isArray(sr.ing))for(const si of sr.ing){
-      const ing=r.ingredientes.find(x=>x.id===si.id);
-      if(ing&&si.kgMasa!=null)ing.kgMasa=si.kgMasa;
+    if(Array.isArray(sr.ing)){
+      // Si las filas guardadas traen nombre, reconstruimos la lista completa
+      // (refleja altas/bajas de componentes). Si no, solo actualizamos kgMasa.
+      if(sr.ing.some(si=>si.nombre!=null)){
+        r.ingredientes=sr.ing.map(si=>({id:si.id,nombre:(si.nombre||si.id).toUpperCase(),kgMasa:si.kgMasa!=null?si.kgMasa:0,x:si.x||''}));
+      } else {
+        for(const si of sr.ing){const ing=r.ingredientes.find(x=>x.id===si.id);if(ing&&si.kgMasa!=null)ing.kgMasa=si.kgMasa;}
+      }
     }
   }
+  if(typeof rebuildXMAP==='function')rebuildXMAP();
 }
 let _saveTimer=null;
 function saveState(){
@@ -1058,9 +1075,19 @@ function renderEditor(){
       </div>
       <div class="sim-note" id="sim-note"></div>
     </div>
-    <table class="ing-table"><thead><tr><th style="width:40%">Ingrediente</th><th style="width:18%;text-align:right">KG/MASA actual</th><th style="width:20%;text-align:right">Nuevo valor</th><th style="width:22%;text-align:right">CONSUMO / TURNO</th></tr></thead><tbody>
-    ${r.ingredientes.map((i,n)=>`<tr><td>${i.nombre.toUpperCase()}</td><td style="text-align:right;color:var(--text3);font-family:var(--mono)">${i.kgMasa}</td><td style="text-align:right"><input class="ing-inp" id="ii${n}" type="number" step="0.001" min="0" value="${i.kgMasa}" oninput="markIng(${n})"></td><td style="text-align:right;font-family:var(--mono);font-weight:600" id="sc${n}">—</td></tr>`).join('')}
+    <table class="ing-table"><thead><tr><th style="width:34%">Ingrediente</th><th style="width:15%;text-align:right">KG/MASA actual</th><th style="width:17%;text-align:right">Nuevo valor</th><th style="width:20%;text-align:right">CONSUMO / TURNO</th><th style="width:6%"></th></tr></thead><tbody>
+    ${r.ingredientes.map((i,n)=>`<tr><td>${i.nombre.toUpperCase()}${i.x?` <span style="color:var(--text3);font-weight:400">[${i.x}]</span>`:''}</td><td style="text-align:right;color:var(--text3);font-family:var(--mono)">${i.kgMasa}</td><td style="text-align:right"><input class="ing-inp" id="ii${n}" type="number" step="0.001" min="0" value="${i.kgMasa}" oninput="markIng(${n})"></td><td style="text-align:right;font-family:var(--mono);font-weight:600" id="sc${n}">—</td><td style="text-align:center"><button class="ing-del" title="Eliminar componente" onclick="delIng(${n})"><i class="ti ti-trash"></i></button></td></tr>`).join('')}
     </tbody></table>
+    <div class="add-ing">
+      <div class="add-ing-title"><i class="ti ti-plus"></i> AÑADIR COMPONENTE</div>
+      <div class="add-ing-row">
+        <input id="ni-nombre" type="text" placeholder="Nombre del componente (igual que en el Excel)">
+        <input id="ni-kg" type="number" step="0.001" min="0" placeholder="kg/masa">
+        <input id="ni-cod" type="text" placeholder="Código Excel (ej. 1000)">
+        <button class="btn btn-dark" onclick="addIng()"><i class="ti ti-plus"></i> Añadir</button>
+      </div>
+      <div class="add-ing-help">El código es el que aparece entre corchetes [ ] en el Excel. Sin él, el componente no se actualizará al importar el stock.</div>
+    </div>
     <div class="save-bar"><button class="btn btn-dark" onclick="saveKg()"><i class="ti ti-device-floppy"></i> Guardar KG/MASA</button><button class="btn btn-outline" onclick="renderEditor()"><i class="ti ti-refresh"></i> Restablecer</button><span class="saved-msg" id="sm"><i class="ti ti-circle-check"></i> GUARDADO</span></div>
   </div>`;
   updMasa();
@@ -1090,6 +1117,31 @@ function savePM(){
 function saveRN(){const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;const v=document.getElementById('rn').value.trim();if(!v)return;r.nombre=v;saveState();renderRecetaGrid();renderCal();flash('sm');}
 function markIng(n){const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;const inp=document.getElementById(`ii${n}`);inp.classList.toggle('changed',parseFloat(inp.value)!==r.ingredientes[n].kgMasa);updMasa();}
 function saveKg(){const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;for(let n=0;n<r.ingredientes.length;n++){const inp=document.getElementById(`ii${n}`);const v=parseFloat(inp.value);if(!isNaN(v)&&v>=0){r.ingredientes[n].kgMasa=v;inp.classList.remove('changed');}}saveState();flash('sm');renderRecetaGrid();renderStock();}
+// Añadir un componente nuevo a la receta activa
+function addIng(){
+  const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;
+  const nombre=document.getElementById('ni-nombre').value.trim();
+  const kg=parseFloat(document.getElementById('ni-kg').value);
+  const cod=document.getElementById('ni-cod').value.trim();
+  if(!nombre){alert('Escribe el nombre del componente.');return;}
+  if(isNaN(kg)||kg<0){alert('Escribe los kg/masa (un número).');return;}
+  // id interno: si el código ya existe en otra receta, reutiliza su id; si no, genera uno
+  let id=null;
+  if(cod&&XMAP[cod])id=XMAP[cod].id;
+  if(!id)id='ing_'+normStr(nombre).toLowerCase().replace(/ /g,'_').slice(0,24)+'_'+Date.now().toString().slice(-4);
+  r.ingredientes.push({id,nombre:nombre.toUpperCase(),kgMasa:kg,x:cod||''});
+  rebuildXMAP();
+  saveState();renderRecetaGrid();renderStock();renderEditor();
+}
+// Eliminar el componente n de la receta activa
+function delIng(n){
+  const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;
+  const ing=r.ingredientes[n];if(!ing)return;
+  if(!confirm('¿Eliminar "'+ing.nombre+'" de esta receta?'))return;
+  r.ingredientes.splice(n,1);
+  rebuildXMAP();
+  saveState();renderRecetaGrid();renderStock();renderEditor();
+}
 function flash(id){const m=document.getElementById(id);if(m){m.classList.add('show');setTimeout(()=>m.classList.remove('show'),2000);}}
 
 function normStr(s){return s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();}
