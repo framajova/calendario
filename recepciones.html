@@ -293,26 +293,43 @@ let activePedidoId=null;
 const MN=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
 const DN=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
 
-// ───────────── PERSISTENCIA COMPARTIDA (backend PHP) ─────────────
-// Lee y escribe en el mismo data.json del servidor que usa Control de Compras,
+// ───────────── PERSISTENCIA COMPARTIDA (Supabase) ─────────────
+// Lee y escribe en la misma base de datos Supabase que usa Control de Compras,
 // así los pedidos/proveedores creados allí aparecen aquí, y los estados de
 // recepción y comentarios de aquí se comparten entre todos los dispositivos.
-// Si no hay servidor, usa localStorage como respaldo.
-const API='data.php';
+// Si Supabase no está configurado o falla, usa localStorage como respaldo.
+//
+// ▼▼▼ PEGA AQUÍ LOS MISMOS DATOS DE SUPABASE QUE EN EL CONTROL DE COMPRAS ▼▼▼
+const SUPABASE_URL='https://isgiigjqrnbmyexqhrgp.supabase.co';
+const SUPABASE_KEY='TU-CLAVE-ANON-PUBLICA';
+// ▲▲▲ ──────────────────────────────────────────────────────────────────── ▲▲▲
+const STATE_ID=1;
 const LS_STATE='ccmp_state';
+function sbReady(){return SUPABASE_KEY.indexOf('TU-CLAVE')===-1 && SUPABASE_KEY.length>20;}
+function sbHeaders(){return {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};}
+async function sbLoad(){
+  const r=await fetch(SUPABASE_URL+'/rest/v1/app_state?id=eq.'+STATE_ID+'&select=data',{headers:sbHeaders(),cache:'no-store'});
+  if(!r.ok)throw new Error('load');
+  const rows=await r.json();return (rows&&rows[0]&&rows[0].data)||{};
+}
 let _saveTimer=null;
 function pushState(){
-  // Carga el estado actual del servidor, fusiona nuestros cambios y reenvía,
-  // para no pisar lo que escribe la otra app (pedidos, stock, etc.).
-  const payload={statusMap, commentsMap};
+  // Respaldo local inmediato
   try{localStorage.setItem(LS_STATUS_KEY,JSON.stringify(statusMap));}catch(e){}
   try{localStorage.setItem(LS_COMMENTS_KEY,JSON.stringify(commentsMap));}catch(e){}
+  if(!sbReady())return;
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(async()=>{
+    // Carga el estado actual, fusiona nuestros cambios y reenvía,
+    // para no pisar lo que escribe la otra app (pedidos, stock, etc.).
     let base={};
-    try{const r=await fetch(API,{cache:'no-store'});if(r.ok)base=await r.json()||{};}catch(e){}
+    try{base=await sbLoad();}catch(e){}
     base.statusMap=statusMap; base.commentsMap=commentsMap;
-    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(base)}).catch(()=>{});
+    fetch(SUPABASE_URL+'/rest/v1/app_state?on_conflict=id',{
+      method:'POST',
+      headers:Object.assign(sbHeaders(),{'Prefer':'resolution=merge-duplicates'}),
+      body:JSON.stringify([{id:STATE_ID,data:base}])
+    }).catch(()=>{});
   },400);
 }
 function applyState(s){
@@ -324,10 +341,9 @@ function applyState(s){
 }
 async function loadFromLS(){
   let loaded=false;
-  try{
-    const r=await fetch(API,{cache:'no-store'});
-    if(r.ok){const s=await r.json();if(s&&Object.keys(s).length){applyState(s);loaded=true;}}
-  }catch(e){}
+  if(sbReady()){
+    try{const s=await sbLoad();if(s&&Object.keys(s).length){applyState(s);loaded=true;}}catch(e){}
+  }
   if(!loaded){
     // Respaldo local (o primera vez sin servidor)
     try{const raw=localStorage.getItem(LS_KEY);if(raw)pedidos=JSON.parse(raw);}catch(e){}
