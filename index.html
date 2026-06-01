@@ -68,6 +68,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 .cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .cal-nav{display:flex;align-items:center;gap:10px;}
 .cal-nb{background:none;border:1.5px solid var(--border);border-radius:var(--r);width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);font-size:17px;}
+.cal-nb:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-bg);}
 .cal-nb:hover{background:var(--bg2);}
 .cal-month{font-size:16px;font-weight:600;letter-spacing:0.06em;}
 .cal-thead{display:grid;grid-template-columns:88px 1fr 120px;border:1.5px solid var(--border);border-bottom:none;background:var(--bg2);}
@@ -191,6 +192,8 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 /* RECETAS */
 .receta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px;margin-bottom:18px;}
 .rc{border-radius:var(--r);padding:10px 12px;cursor:pointer;border-left:4px solid;}
+.rc-new{border:1.5px dashed var(--accent);border-left:1.5px dashed var(--accent);background:var(--accent-bg);color:var(--accent);display:flex;flex-direction:column;justify-content:center;}
+.rc-new:hover{background:#dde3ff;}
 .rc:hover{filter:brightness(0.95);}
 .rc.active{outline:2px solid currentColor;outline-offset:1px;}
 .rc-blue{background:var(--blue-bg);color:var(--blue-tx);border-left-color:var(--blue-bd);}
@@ -213,9 +216,16 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 .eh-pink{background:#F4C0D1;color:var(--pink-tx);}
 .cdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .cdot-blue{background:var(--blue-bd);}.cdot-teal{background:var(--teal-bd);}.cdot-amber{background:var(--amber-bd);}.cdot-coral{background:var(--coral-bd);}.cdot-purple{background:var(--purple-bd);}.cdot-green{background:var(--green-bd);}.cdot-pink{background:var(--pink-bd);}
+.color-row{display:flex;align-items:center;gap:7px;padding:9px 14px;border-bottom:1.5px solid var(--border);background:var(--bg2);}
+.color-row-lbl{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.06em;margin-right:3px;}
+.color-chip{width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--border);cursor:pointer;padding:0;}
+.color-chip:hover{box-shadow:0 0 0 1.5px var(--text2);}
+.color-chip.sel{box-shadow:0 0 0 2px var(--text);transform:scale(1.12);}
 .name-inp{font-size:13px;font-weight:500;border:none;background:transparent;color:inherit;padding:0;flex:1;outline:none;font-family:var(--font);text-transform:uppercase;letter-spacing:0.04em;min-width:0;}
 .name-inp:focus{border-bottom:1.5px solid currentColor;}
 .gsm{background:none;border:1px solid currentColor;padding:4px 8px;border-radius:var(--r);font-size:9px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:4px;opacity:0.7;font-family:var(--font);text-transform:uppercase;letter-spacing:0.05em;}
+.gsm-del{border-color:var(--danger-bd);color:var(--danger-bd);opacity:0.85;}
+.gsm-del:hover{background:var(--danger-bg);opacity:1;}
 .gsm:hover{opacity:1;}
 .sim-box{padding:12px 14px;border-bottom:1.5px solid var(--border);background:var(--bg2);}
 .sim-title{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.06em;display:flex;align-items:center;gap:5px;margin-bottom:9px;}
@@ -351,9 +361,9 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
     <div id="sec-calendario" class="section active">
       <div class="cal-hdr">
         <div class="cal-nav">
-          <button class="cal-nb" onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+          <button class="cal-nb" onclick="changeMonth(-1)" title="Mes anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
           <span class="cal-month" id="cal-title"></span>
-          <button class="cal-nb" onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+          <button class="cal-nb" onclick="changeMonth(1)" title="Mes siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
         </div>
       </div>
       <div class="cal-thead">
@@ -588,7 +598,7 @@ function sbHeaders(){return {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUP
 function collectState(){
   return {
     stock, stockDate, prog, proveedores, pedidos,
-    recetas: RECETAS.map(r=>({id:r.id,nombre:r.nombre,pesoMasa:r.pesoMasa,
+    recetas: RECETAS.map(r=>({id:r.id,nombre:r.nombre,color:r.color,pesoMasa:r.pesoMasa,
       ing:r.ingredientes.map(i=>({id:i.id,nombre:i.nombre,kgMasa:i.kgMasa,x:i.x||''}))}))
   };
 }
@@ -599,17 +609,27 @@ function applyState(s){
   if(s.prog&&typeof s.prog==='object')prog=s.prog;
   if(Array.isArray(s.proveedores))proveedores=s.proveedores;
   if(Array.isArray(s.pedidos))pedidos=s.pedidos;
-  if(Array.isArray(s.recetas))for(const sr of s.recetas){
-    const r=RECETAS.find(x=>x.id===sr.id);if(!r)continue;
-    if(sr.nombre)r.nombre=sr.nombre;
-    if(sr.pesoMasa!=null)r.pesoMasa=sr.pesoMasa;
-    if(Array.isArray(sr.ing)){
-      // Si las filas guardadas traen nombre, reconstruimos la lista completa
-      // (refleja altas/bajas de componentes). Si no, solo actualizamos kgMasa.
-      if(sr.ing.some(si=>si.nombre!=null)){
-        r.ingredientes=sr.ing.map(si=>({id:si.id,nombre:(si.nombre||si.id).toUpperCase(),kgMasa:si.kgMasa!=null?si.kgMasa:0,x:si.x||''}));
-      } else {
-        for(const si of sr.ing){const ing=r.ingredientes.find(x=>x.id===si.id);if(ing&&si.kgMasa!=null)ing.kgMasa=si.kgMasa;}
+  if(Array.isArray(s.recetas)){
+    // Si el estado guardado trae la lista completa de recetas (con ingredientes
+    // que incluyen nombre), reconstruimos TODA la lista para reflejar también
+    // recetas añadidas o eliminadas. Si es un estado antiguo (solo kgMasa),
+    // hacemos la actualización conservadora sobre las recetas existentes.
+    const completo=s.recetas.some(sr=>Array.isArray(sr.ing)&&sr.ing.some(si=>si.nombre!=null));
+    if(completo){
+      RECETAS.length=0;
+      for(const sr of s.recetas){
+        RECETAS.push({
+          id:sr.id, nombre:sr.nombre||sr.id, color:sr.color||'blue',
+          pesoMasa:sr.pesoMasa!=null?sr.pesoMasa:425,
+          ingredientes:(sr.ing||[]).map(si=>({id:si.id,nombre:(si.nombre||si.id).toUpperCase(),kgMasa:si.kgMasa!=null?si.kgMasa:0,x:si.x||''}))
+        });
+      }
+    } else {
+      for(const sr of s.recetas){
+        const r=RECETAS.find(x=>x.id===sr.id);if(!r)continue;
+        if(sr.nombre)r.nombre=sr.nombre;
+        if(sr.pesoMasa!=null)r.pesoMasa=sr.pesoMasa;
+        if(Array.isArray(sr.ing))for(const si of sr.ing){const ing=r.ingredientes.find(x=>x.id===si.id);if(ing&&si.kgMasa!=null)ing.kgMasa=si.kgMasa;}
       }
     }
   }
@@ -1060,13 +1080,51 @@ function saveProv(){
 function renderRecetaGrid(){
   const g=document.getElementById('receta-grid');g.innerHTML='';
   for(const r of RECETAS){const c=document.createElement('div');c.className=`rc rc-${r.color}${activeRID===r.id?' active':''}`;c.innerHTML=`<div class="rc-name">${r.nombre.toUpperCase()}</div><div class="rc-count">${r.ingredientes.length} ING.</div>`;c.onclick=()=>{activeRID=r.id;renderRecetaGrid();renderEditor();};g.appendChild(c);}
+  const add=document.createElement('div');add.className='rc rc-new';add.innerHTML='<div class="rc-name"><i class="ti ti-plus"></i> NUEVA RECETA</div><div class="rc-count">crear desde cero</div>';add.onclick=addReceta;g.appendChild(add);
+}
+const RECETA_COLORS=['blue','teal','amber','coral','purple','green','pink'];
+// Devuelve el color menos usado entre las recetas actuales, para diferenciar la nueva
+function colorAuto(){
+  const uso={};for(const c of RECETA_COLORS)uso[c]=0;
+  for(const r of RECETAS)if(uso[r.color]!=null)uso[r.color]++;
+  let mejor=RECETA_COLORS[0],min=Infinity;
+  for(const c of RECETA_COLORS){if(uso[c]<min){min=uso[c];mejor=c;}}
+  return mejor;
+}
+function addReceta(){
+  const nombre=prompt('Nombre de la nueva receta:');
+  if(nombre===null)return;
+  const nom=nombre.trim();if(!nom){alert('Escribe un nombre.');return;}
+  const id='receta_'+Date.now().toString().slice(-8);
+  const color=colorAuto();   // color automático que la diferencia de las existentes
+  RECETAS.push({id,nombre:nom,color,pesoMasa:425,ingredientes:[]});
+  activeRID=id;
+  rebuildXMAP();
+  saveState();renderRecetaGrid();renderEditor();renderStock();
+}
+// Cambiar el color de la receta activa
+function setRecetaColor(c){
+  const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;
+  r.color=c;
+  saveState();renderRecetaGrid();renderEditor();renderCal();
+}
+// Eliminar la receta activa por completo
+function delReceta(){
+  const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;
+  if(!confirm('¿Eliminar la receta "'+r.nombre+'" por completo? Esta acción no se puede deshacer.'))return;
+  const i=RECETAS.findIndex(x=>x.id===activeRID);
+  if(i>=0)RECETAS.splice(i,1);
+  activeRID=RECETAS.length?RECETAS[0].id:null;
+  rebuildXMAP();
+  saveState();renderRecetaGrid();renderEditor();renderCal();renderStock();
 }
 function renderEditor(){
   const ed=document.getElementById('receta-editor');
   if(!activeRID){ed.innerHTML='<p style="font-size:11px;color:var(--text3)">Selecciona una receta para editar.</p>';return;}
   const r=RECETAS.find(x=>x.id===activeRID);if(!r){ed.innerHTML='';return;}
   ed.innerHTML=`<div class="editor-wrap">
-    <div class="editor-head eh-${r.color}"><div class="cdot cdot-${r.color}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button></div>
+    <div class="editor-head eh-${r.color}"><div class="cdot cdot-${r.color}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button><button class="gsm gsm-del" onclick="delReceta()" title="Eliminar receta"><i class="ti ti-trash"></i></button></div>
+    <div class="color-row"><span class="color-row-lbl">COLOR:</span>${RECETA_COLORS.map(c=>`<button class="color-chip cdot-${c}${r.color===c?' sel':''}" title="${c}" onclick="setRecetaColor('${c}')"></button>`).join('')}</div>
     <div class="sim-box">
       <div class="sim-title"><i class="ti ti-calculator"></i> KG DE LA MASA (tamaño de lote)</div>
       <div class="sim-row">
