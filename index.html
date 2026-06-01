@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Compras — Materia Prima</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.30.0/iconfont/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#f0f3f9;--bg2:#e6ebf4;--bg3:#dae1ee;
+  --border:#c2cadb;--border2:#a6b1c8;
+  --text:#171a21;--text2:#5a6273;--text3:#9098a8;
+  --accent:#3D5AFE;--accent2:#5C77FF;--accent-bg:#E8ECFF;
+  --blue-bg:#E6F1FB;--blue-bg2:#dbeeff;--blue-bg3:#c8e4ff;--blue-bd:#185FA5;--blue-tx:#0C447C;
+  --teal-bg:#E1F5EE;--teal-bd:#0F6E56;--teal-tx:#085041;
+  --amber-bg:#FAEEDA;--amber-bd:#854F0B;--amber-tx:#633806;
+  --coral-bg:#FAECE7;--coral-bd:#993C1D;--coral-tx:#4A1B0C;
+  --purple-bg:#EEEDFE;--purple-bd:#534AB7;--purple-tx:#26215C;
+  --green-bg:#EAF3DE;--green-bd:#3B6D11;--green-tx:#27500A;
+  --pink-bg:#FBEAF0;--pink-bd:#993556;--pink-tx:#4B1528;
+  --danger-bg:#FCEBEB;--danger-bd:#E24B4A;--danger-tx:#501313;
+  --warn-bg:#FAEEDA;--warn-bd:#BA7517;--warn-tx:#412402;
+  --ok-bg:#EAF3DE;--ok-tx:#27500A;--ok-bd:#639922;
+  --success-bg:#EAF3DE;--success-bd:#639922;--success-tx:#173404;
+  --info-bg:#E6F1FB;--info-bd:#378ADD;--info-tx:#042C53;
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --r:6px;--rl:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;text-transform:uppercase;}
+input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
+
+.shell{display:flex;min-height:100vh;}
+.sidebar{width:210px;background:linear-gradient(180deg,#1e2a4a 0%,#202649 55%,#2a2356 100%);color:#fff;display:flex;flex-direction:column;flex-shrink:0;}
+.logo{padding:20px 16px 14px;font-size:11px;font-weight:600;letter-spacing:0.1em;border-bottom:1px solid rgba(255,255,255,0.12);line-height:1.4;}
+.logo span{display:block;font-size:9px;opacity:0.45;margin-top:3px;font-weight:400;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:11px;font-weight:500;letter-spacing:0.06em;cursor:pointer;color:rgba(255,255,255,0.5);border-left:3px solid transparent;}
+.nav-link-ext{margin-top:8px;border-top:1px solid rgba(255,255,255,0.12);padding-top:14px!important;color:rgba(146,170,255,0.85)!important;text-transform:uppercase;}
+.nav-link-ext:hover{color:#fff!important;background:rgba(92,119,255,0.18);}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,0.06);}
+.nav-item.active{color:#fff;border-left-color:var(--accent2);background:rgba(92,119,255,0.18);}
+.nav-item i{font-size:16px;}
+.nav-badge{margin-left:auto;background:var(--danger-bd);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;display:none;}
+.nav-badge.urgent{animation:badge-pulse 1s ease-in-out infinite;}
+@keyframes badge-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.15);}}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.topbar{background:#fff;border-bottom:1.5px solid var(--border);padding:11px 24px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 1px 0 rgba(61,90,254,0.04);}
+.topbar-title{font-size:11px;font-weight:600;letter-spacing:0.08em;color:var(--accent);}
+.content{padding:22px 24px;flex:1;overflow-y:auto;background:linear-gradient(180deg,#f0f3f9 0%,#eaeff7 100%);}
+.section{display:none;}
+.section.active{display:block;}
+
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--r);font-size:10px;font-weight:500;letter-spacing:0.05em;cursor:pointer;border:1.5px solid transparent;}
+.btn-dark{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-dark:hover{background:#2c46d8;}
+.btn-outline{background:transparent;color:var(--text);border-color:var(--border2);}
+.btn-outline:hover{background:var(--bg2);}
+.btn-green{background:var(--green-bg);color:var(--green-tx);border-color:var(--ok-bd);}
+.btn-green:hover{background:#c0dd97;}
+.btn-danger{background:none;color:var(--danger-tx);border-color:var(--danger-bd);}
+.btn-danger:hover{background:var(--danger-bg);}
+.btn-del-sm{background:none;border:1px solid var(--danger-bd);padding:3px 7px;border-radius:var(--r);font-size:10px;cursor:pointer;color:var(--danger-tx);}
+.sec-title{font-size:10px;font-weight:600;letter-spacing:0.09em;color:var(--text2);margin-bottom:14px;}
+
+/* CALENDAR */
+.cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cal-nav{display:flex;align-items:center;gap:10px;}
+.cal-nb{background:none;border:1.5px solid var(--border);border-radius:var(--r);width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);font-size:17px;}
+.cal-nb:hover{background:var(--bg2);}
+.cal-month{font-size:16px;font-weight:600;letter-spacing:0.06em;}
+.cal-thead{display:grid;grid-template-columns:88px 1fr 120px;border:1.5px solid var(--border);border-bottom:none;background:var(--bg2);}
+.cal-th{font-size:11px;font-weight:600;color:var(--text3);padding:9px 12px;letter-spacing:0.07em;}
+.cal-th:not(:last-child){border-right:1.5px solid var(--border);}
+.cal-th:last-child{text-align:right;}
+.week-block{border:1.5px solid var(--border);border-top:none;}
+.week-block.cw{border-color:var(--blue-bd);border-width:2px;}
+.week-row{display:grid;grid-template-columns:88px 1fr 120px;}
+.week-row.bot{border-top:1px dashed var(--border);}
+.cw .week-row.bot{border-top-color:#93c5f5;}
+.wkn{padding:11px 12px;background:var(--bg2);display:flex;flex-direction:column;justify-content:center;border-right:1.5px solid var(--border);font-size:16px;font-weight:600;}
+.week-row.bot .wkn{background:var(--bg3);}
+.cw .week-row.top .wkn{background:var(--blue-bg2);border-right-color:var(--blue-bd);color:var(--blue-bd);}
+.cw .week-row.bot .wkn{background:var(--blue-bg3);border-right-color:var(--blue-bd);}
+.wkr{font-size:11px;color:var(--text3);margin-top:3px;font-weight:400;}
+.cw .wkr{color:var(--blue-bd);opacity:0.8;}
+.cw-badge{display:inline-block;font-size:9px;font-weight:600;background:var(--blue-bd);color:#fff;border-radius:3px;padding:2px 5px;margin-top:4px;letter-spacing:0.05em;}
+.wke{padding:10px 12px;min-height:60px;cursor:pointer;background:#fff;border-right:1.5px solid var(--border);}
+.wke:hover{background:var(--bg2);}
+.week-row.bot .wke{background:var(--bg);}
+.week-row.bot .wke:hover{background:var(--bg2);}
+.cw .week-row.top .wke{background:var(--blue-bg2);border-right-color:var(--blue-bd);}
+.cw .week-row.bot .wke{background:var(--blue-bg3);border-right-color:var(--blue-bd);}
+.cw .week-row.top .wke:hover{background:var(--blue-bg3);}
+.cw .week-row.bot .wke:hover{background:#b5d8ff;}
+.chips{display:flex;flex-wrap:wrap;gap:5px;}
+.chip{font-size:13px;font-weight:600;padding:4px 11px;border-radius:4px;letter-spacing:0.03em;white-space:nowrap;}
+.chip-blue{background:var(--blue-bg);color:var(--blue-tx);}
+.chip-teal{background:var(--teal-bg);color:var(--teal-tx);}
+.chip-amber{background:var(--amber-bg);color:var(--amber-tx);}
+.chip-coral{background:var(--coral-bg);color:var(--coral-tx);}
+.chip-purple{background:var(--purple-bg);color:var(--purple-tx);}
+.chip-green{background:var(--green-bg);color:var(--green-tx);}
+.chip-pink{background:var(--pink-bg);color:var(--pink-tx);}
+.chip-add{font-size:12px;color:var(--text3);display:inline-flex;align-items:center;gap:4px;}
+.wkt{padding:10px 12px;text-align:right;display:flex;flex-direction:column;justify-content:center;font-size:15px;font-weight:600;}
+.week-row.bot .wkt{background:var(--bg);}
+.cw .week-row.top .wkt{background:var(--blue-bg2);}
+.cw .week-row.bot .wkt{background:var(--blue-bg3);}
+.wkt-s{font-size:11px;color:var(--text3);margin-top:3px;font-weight:400;}
+
+/* STOCK */
+.stock-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.stock-badge{font-size:10px;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;border:1px solid;}
+.stock-badge.stale{background:var(--warn-bg);color:var(--warn-tx);border-color:var(--warn-bd);}
+.stock-badge.ok{background:var(--ok-bg);color:var(--ok-tx);border-color:var(--ok-bd);}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.stat-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--rl);padding:14px;}
+.stat-label{font-size:9px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;}
+.stat-value{font-size:26px;font-weight:600;font-family:var(--mono);}
+.stat-sub{font-size:9px;color:var(--text3);margin-top:3px;}
+.data-table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;}
+.data-table th{font-size:9px;font-weight:600;color:var(--text3);text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);letter-spacing:0.07em;background:var(--bg2);}
+.data-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle;word-wrap:break-word;}
+.data-table td:not(:first-child){font-family:var(--mono);}
+.data-table tr:hover td{background:var(--bg2);}
+.badge{display:inline-block;font-size:9px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.04em;}
+.badge-ok{background:var(--ok-bg);color:var(--ok-tx);}
+.badge-warn{background:var(--warn-bg);color:var(--warn-tx);}
+.badge-danger{background:var(--danger-bg);color:var(--danger-tx);}
+
+/* ALERTAS */
+.alert-box{border-radius:var(--rl);padding:18px 20px;margin-bottom:12px;border-left:5px solid;display:flex;flex-direction:column;gap:0;}
+.alert-danger{background:var(--danger-bg);border-color:var(--danger-bd);color:var(--danger-tx);}
+.alert-warn{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn-tx);}
+.alert-info{background:var(--info-bg);border-color:var(--info-bd);color:var(--info-tx);}
+.alert-success{background:var(--success-bg);border-color:var(--success-bd);color:var(--success-tx);}
+.alert-title{font-size:14px;font-weight:700;letter-spacing:0.04em;display:flex;align-items:center;gap:7px;}
+.alert-title i{font-size:17px;}
+.alert-body{font-size:13px;margin-top:7px;opacity:0.9;font-family:var(--mono);line-height:1.6;padding:8px 12px;background:rgba(0,0,0,0.04);border-radius:var(--r);}
+.alert-divider{height:1px;background:currentColor;opacity:0.12;margin:12px 0;}
+.deadline-box{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:var(--r);font-size:13px;font-weight:600;border:1.5px solid currentColor;}
+.dl-urgent{background:rgba(226,75,74,0.12);color:var(--danger-tx);border-color:rgba(226,75,74,0.35);}
+.dl-warn{background:rgba(186,117,23,0.12);color:var(--warn-tx);border-color:rgba(186,117,23,0.35);}
+.dl-ok{background:rgba(99,153,34,0.1);color:var(--success-tx);border-color:rgba(99,153,34,0.3);}
+.alert-row{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.alert-meta{font-size:12px;opacity:0.8;margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--mono);padding-top:8px;border-top:1px solid currentColor;border-top-color:rgba(0,0,0,0.1);}
+
+/* PROVEEDORES */
+.prov-search-bar{display:flex;gap:8px;margin-bottom:14px;}
+.prov-search-input{flex:1;font-size:12px;border:1.5px solid var(--border);border-radius:var(--r);padding:8px 12px;background:#fff;color:var(--text);}
+.prov-search-input:focus{outline:none;border-color:var(--border2);}
+.prov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px;margin-bottom:20px;}
+.prov-card{border-radius:var(--rl);cursor:pointer;overflow:hidden;border:1.5px solid var(--border);background:#fff;transition:box-shadow .15s;}
+.prov-card:hover{box-shadow:0 2px 12px rgba(0,0,0,0.09);}
+.prov-card.active{border-color:var(--text);box-shadow:0 0 0 2px var(--text);}
+.prov-band{height:6px;}
+.prov-body{padding:12px 14px;}
+.prov-name{font-size:11px;font-weight:600;letter-spacing:0.04em;margin-bottom:8px;}
+.prov-dias-row{display:flex;align-items:baseline;gap:4px;margin-bottom:8px;}
+.prov-dias-num{font-size:22px;font-weight:700;font-family:var(--mono);line-height:1;}
+.prov-dias-label{font-size:9px;color:var(--text3);line-height:1.3;}
+.prov-mats-hdr{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.05em;margin-bottom:4px;padding-top:8px;border-top:1px solid var(--border);}
+.prov-mat-chips{display:flex;flex-wrap:wrap;gap:3px;}
+.pmat{font-size:8px;padding:1px 5px;border-radius:3px;background:var(--bg2);color:var(--text2);}
+
+.prov-edit{border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;}
+.prov-edit-hdr{padding:13px 16px;display:flex;align-items:center;gap:12px;border-bottom:1.5px solid var(--border);}
+.prov-edit-body{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.prov-edit-col{display:flex;flex-direction:column;gap:14px;}
+.field-label{font-size:9px;font-weight:600;color:var(--text2);letter-spacing:0.06em;margin-bottom:4px;display:block;}
+.field-input{width:100%;font-size:12px;border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;background:#fff;color:var(--text);}
+.field-input:focus{outline:none;border-color:var(--border2);}
+.field-input-sm{width:80px;font-size:14px;font-weight:600;border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;background:#fff;color:var(--text);text-align:center;font-family:var(--mono);}
+.field-input-sm:focus{outline:none;border-color:var(--border2);}
+.color-picker{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px;}
+.csw{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
+.csw.sel{border-color:var(--text);transform:scale(1.15);}
+.mat-wrap{border:1px solid var(--border);border-radius:var(--r);max-height:240px;overflow-y:auto;}
+.mat-row{display:flex;align-items:center;padding:6px 10px;gap:8px;border-bottom:1px solid var(--border);font-size:10px;}
+.mat-row:last-child{border-bottom:none;}
+.mat-row:hover{background:var(--bg2);}
+.mat-row input[type=checkbox]{width:13px;height:13px;cursor:pointer;flex-shrink:0;}
+.mat-row label{flex:1;cursor:pointer;}
+.mat-other{font-size:8px;padding:1px 5px;border-radius:8px;white-space:nowrap;}
+.prov-edit-footer{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1.5px solid var(--border);background:var(--bg2);}
+.saved-msg{font-size:10px;color:var(--ok-tx);display:none;}
+.saved-msg.show{display:inline;}
+
+/* RECETAS */
+.receta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px;margin-bottom:18px;}
+.rc{border-radius:var(--r);padding:10px 12px;cursor:pointer;border-left:4px solid;}
+.rc:hover{filter:brightness(0.95);}
+.rc.active{outline:2px solid currentColor;outline-offset:1px;}
+.rc-blue{background:var(--blue-bg);color:var(--blue-tx);border-left-color:var(--blue-bd);}
+.rc-teal{background:var(--teal-bg);color:var(--teal-tx);border-left-color:var(--teal-bd);}
+.rc-amber{background:var(--amber-bg);color:var(--amber-tx);border-left-color:var(--amber-bd);}
+.rc-coral{background:var(--coral-bg);color:var(--coral-tx);border-left-color:var(--coral-bd);}
+.rc-purple{background:var(--purple-bg);color:var(--purple-tx);border-left-color:var(--purple-bd);}
+.rc-green{background:var(--green-bg);color:var(--green-tx);border-left-color:var(--green-bd);}
+.rc-pink{background:var(--pink-bg);color:var(--pink-tx);border-left-color:var(--pink-bd);}
+.rc-name{font-size:10px;font-weight:600;letter-spacing:0.03em;}
+.rc-count{font-size:9px;margin-top:2px;opacity:0.65;}
+.editor-wrap{border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;}
+.editor-head{padding:12px 14px;display:flex;align-items:center;gap:10px;}
+.eh-blue{background:#B5D4F4;color:var(--blue-tx);}
+.eh-teal{background:#9FE1CB;color:var(--teal-tx);}
+.eh-amber{background:#FAC775;color:var(--amber-tx);}
+.eh-coral{background:#F5C4B3;color:var(--coral-tx);}
+.eh-purple{background:#CECBF6;color:var(--purple-tx);}
+.eh-green{background:#C0DD97;color:var(--green-tx);}
+.eh-pink{background:#F4C0D1;color:var(--pink-tx);}
+.cdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.cdot-blue{background:var(--blue-bd);}.cdot-teal{background:var(--teal-bd);}.cdot-amber{background:var(--amber-bd);}.cdot-coral{background:var(--coral-bd);}.cdot-purple{background:var(--purple-bd);}.cdot-green{background:var(--green-bd);}.cdot-pink{background:var(--pink-bd);}
+.name-inp{font-size:13px;font-weight:500;border:none;background:transparent;color:inherit;padding:0;flex:1;outline:none;font-family:var(--font);text-transform:uppercase;letter-spacing:0.04em;min-width:0;}
+.name-inp:focus{border-bottom:1.5px solid currentColor;}
+.gsm{background:none;border:1px solid currentColor;padding:4px 8px;border-radius:var(--r);font-size:9px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:4px;opacity:0.7;font-family:var(--font);text-transform:uppercase;letter-spacing:0.05em;}
+.gsm:hover{opacity:1;}
+.sim-box{padding:12px 14px;border-bottom:1.5px solid var(--border);background:var(--bg2);}
+.sim-title{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.06em;display:flex;align-items:center;gap:5px;margin-bottom:9px;}
+.sim-row{display:flex;gap:10px;align-items:center;}
+.sim-row input{flex:1;font-size:15px;text-align:right;border:1.5px solid var(--blue-bd);background:var(--blue-bg);border-radius:var(--r);padding:7px 10px;color:var(--text);font-family:var(--mono);font-weight:600;}
+.sim-row input:focus{outline:none;border-color:var(--border2);}
+.sim-note{margin-top:9px;font-size:10px;color:var(--text2);font-family:var(--mono);}
+.ing-table{width:100%;border-collapse:collapse;font-size:11px;}
+.ing-table th{font-size:9px;font-weight:600;color:var(--text3);text-align:left;padding:7px 12px;border-bottom:1.5px solid var(--border);background:var(--bg2);letter-spacing:0.06em;}
+.ing-table td{padding:7px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.ing-table tr:last-child td{border-bottom:none;}
+.ing-table tr:hover td{background:var(--bg2);}
+.ing-inp{width:85px;font-size:11px;text-align:right;border:1.5px solid var(--border);border-radius:var(--r);padding:4px 7px;background:#fff;color:var(--text);font-family:var(--mono);}
+.ing-inp:focus{outline:none;border-color:var(--border2);}
+.ing-inp.changed{border-color:var(--blue-bd);background:var(--blue-bg);}
+.save-bar{display:flex;align-items:center;gap:10px;padding:11px 14px;border-top:1.5px solid var(--border);background:var(--bg2);}
+
+/* MODALS */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--bg);border:2px solid var(--border2);border-radius:var(--rl);padding:20px;width:420px;max-width:95vw;max-height:88vh;overflow-y:auto;}
+.modal-title{font-size:12px;font-weight:600;letter-spacing:0.06em;margin-bottom:3px;}
+.modal-sub{font-size:10px;color:var(--text2);margin-bottom:14px;}
+.modal label{font-size:9px;font-weight:600;color:var(--text2);display:block;margin-bottom:3px;margin-top:10px;letter-spacing:0.06em;}
+.modal select,.modal input[type=number]{width:100%;font-size:12px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:6px 8px;color:var(--text);}
+.modal select:focus,.modal input:focus{outline:none;border-color:var(--border2);}
+.modal-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end;}
+.preview-box{margin-top:8px;padding:7px 10px;background:var(--bg2);border-radius:var(--r);font-size:10px;color:var(--text2);font-family:var(--mono);}
+.entry-list{display:flex;flex-direction:column;gap:5px;margin-bottom:4px;}
+.entry-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border-radius:var(--r);padding:7px 10px;}
+.entry-info{font-size:11px;font-weight:500;}
+.entry-meta{font-size:10px;color:var(--text2);margin-top:1px;font-family:var(--mono);}
+.divider{border-top:1.5px solid var(--border);margin-top:12px;padding-top:12px;}
+.import-list{max-height:260px;overflow-y:auto;margin-top:6px;border:1px solid var(--border);border-radius:var(--r);}
+.import-row{display:flex;align-items:center;padding:5px 9px;border-bottom:1px solid var(--border);font-size:10px;}
+.import-row:last-child{border-bottom:none;}
+.import-row:hover{background:var(--bg2);}
+.import-name{flex:1;}
+.import-qty{color:var(--text2);min-width:75px;text-align:right;font-family:var(--mono);}
+.import-match{font-size:9px;padding:1px 5px;border-radius:8px;margin-left:6px;}
+.import-match.yes{background:var(--ok-bg);color:var(--ok-tx);}
+.import-match.no{background:var(--bg3);color:var(--text3);}
+
+/* PEDIDOS */
+.chip-order{background:#1a1916;color:#fff;display:inline-flex;align-items:center;gap:4px;}
+.chip-order i{font-size:10px;opacity:0.75;}
+.order-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:3px;background:#1a1916;color:#fff;white-space:nowrap;letter-spacing:0.03em;}
+.order-pill i{font-size:11px;opacity:0.7;}
+.order-next-box{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:var(--r);font-size:13px;font-weight:600;background:rgba(26,25,22,0.07);color:var(--text);border:1.5px solid rgba(26,25,22,0.18);}
+.order-next-box i{font-size:15px;}
+.order-next-box.confirmed{background:#1a7a3a;color:#fff;border-color:#155e2d;}
+.order-next-box.pending{background:#c45c00;color:#fff;border-color:#9e4a00;}
+.pedidos-section{margin-bottom:22px;}
+.pedidos-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.pedido-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);margin-bottom:6px;}
+.pedido-row:hover{background:var(--bg2);}
+.pedido-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.pedido-info{flex:1;min-width:0;}
+.pedido-nombre{font-size:11px;font-weight:600;letter-spacing:0.03em;}
+.pedido-meta{font-size:9px;color:var(--text2);margin-top:2px;font-family:var(--mono);}
+.pedido-fecha{font-size:10px;font-weight:600;font-family:var(--mono);color:var(--text2);white-space:nowrap;}
+.pedidos-empty{font-size:11px;color:var(--text3);padding:10px 0;}
+.btn-orders{background:var(--bg);color:var(--text);border-color:var(--border2);}
+.btn-orders:hover{background:var(--bg2);}
+.pedidos-stats{display:flex;gap:10px;margin-bottom:14px;}
+.pedido-stat{flex:1;border-radius:var(--rl);padding:12px 14px;border:1.5px solid var(--border);background:#fff;display:flex;flex-direction:column;gap:3px;}
+.pedido-stat-val{font-size:22px;font-weight:700;line-height:1;}
+.pedido-stat-lbl{font-size:9px;color:var(--text3);letter-spacing:0.07em;}
+.pedido-stat.warn{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn-tx);}
+.pedido-stat.danger{background:var(--danger-bg);border-color:var(--danger-bd);color:var(--danger-tx);}
+.pedido-stat.warn .pedido-stat-lbl,.pedido-stat.danger .pedido-stat-lbl{color:currentColor;opacity:0.7;}
+.pedido-stat.pf-active{outline:2.5px solid var(--text);outline-offset:2px;}
+.pedido-stat.warn.pf-active{outline-color:var(--warn-bd);}
+.pedido-stat.danger.pf-active{outline-color:var(--danger-bd);}
+.nav-badge-pedidos{margin-left:auto;font-size:9px;padding:1px 5px;border-radius:8px;display:none;color:#fff;}
+.nb-warn{background:var(--warn-bd);}
+.nb-danger{background:var(--danger-bd);animation:badge-pulse 1s ease-in-out infinite;}
+/* Calendar production summary pills */
+.prod-summary{display:flex;flex-wrap:wrap;gap:5px;padding:8px 12px;border-top:1px solid var(--border);background:var(--bg2);}
+.prod-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.prod-pill-blue{background:var(--blue-bg);color:var(--blue-tx);}
+.prod-pill-teal{background:var(--teal-bg);color:var(--teal-tx);}
+.prod-pill-amber{background:var(--amber-bg);color:var(--amber-tx);}
+.prod-pill-coral{background:var(--coral-bg);color:var(--coral-tx);}
+.prod-pill-purple{background:var(--purple-bg);color:var(--purple-tx);}
+.prod-pill-green{background:var(--green-bg);color:var(--green-tx);}
+.prod-pill-pink{background:var(--pink-bg);color:var(--pink-tx);}
+.prod-pill i{font-size:11px;opacity:0.7;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<aside class="sidebar">
+  <div class="logo">Control de Compras<span>Materia Prima v5.3</span></div>
+  <nav style="flex:1;padding-top:6px;">
+    <div class="nav-item active" onclick="showTab('calendario',this)"><i class="ti ti-calendar"></i> Calendario</div>
+    <div class="nav-item" onclick="showTab('stock',this)"><i class="ti ti-chart-bar"></i> Stock y consumo</div>
+    <div class="nav-item" onclick="showTab('alertas',this)"><i class="ti ti-bell"></i> Alertas <span class="nav-badge" id="alert-badge"></span></div>
+    <div class="nav-item" onclick="showTab('proveedores',this)"><i class="ti ti-truck"></i> Proveedores</div>
+    <div class="nav-item" onclick="showTab('recetas',this)"><i class="ti ti-clipboard-list"></i> Recetas</div>
+    <div class="nav-item" onclick="showTab('pedidos',this)"><i class="ti ti-shopping-cart"></i> Pedidos <span class="nav-badge-pedidos" id="pedidos-badge"></span></div>
+    <a href="recepciones.html" class="nav-item nav-link-ext" style="text-decoration:none;"><i class="ti ti-calendar-check"></i> Recepciones <i class="ti ti-external-link" style="margin-left:auto;font-size:13px;opacity:0.6;"></i></a>
+  </nav>
+  <div style="padding:14px 16px;font-size:9px;color:rgba(255,255,255,0.2);letter-spacing:0.05em;">2025</div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title" id="topbar-title">Calendario de programación</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green" id="btn-import" onclick="document.getElementById('file-input').click()" style="display:none">
+        <i class="ti ti-file-spreadsheet"></i> Importar stock (.xlsx)
+      </button>
+      <button class="btn btn-dark" id="btn-nuevo-pedido" onclick="openNuevoPedido()" style="display:none">
+        <i class="ti ti-plus"></i> Nuevo pedido
+      </button>
+      <input type="file" id="file-input" accept=".xlsx" style="display:none" onchange="handleImport(event)">
+    </div>
+  </div>
+  <div class="content">
+
+    <div id="sec-calendario" class="section active">
+      <div class="cal-hdr">
+        <div class="cal-nav">
+          <button class="cal-nb" onclick="changeMonth(-1)"><i class="ti ti-chevron-left"></i></button>
+          <span class="cal-month" id="cal-title"></span>
+          <button class="cal-nb" onclick="changeMonth(1)"><i class="ti ti-chevron-right"></i></button>
+        </div>
+      </div>
+      <div class="cal-thead">
+        <div class="cal-th">Semana</div>
+        <div class="cal-th">Programación</div>
+        <div class="cal-th">Turnos / KG</div>
+      </div>
+      <div id="week-blocks"></div>
+    </div>
+
+    <div id="sec-stock" class="section">
+      <div class="stock-hdr">
+        <div>
+          <div class="sec-title">Stock y consumo previsto</div>
+          <span class="stock-badge stale" id="stock-badge"><i class="ti ti-database"></i> Stock inicial</span>
+        </div>
+        <button class="btn btn-green" onclick="document.getElementById('file-input').click()">
+          <i class="ti ti-file-spreadsheet"></i> Importar stock (.xlsx)
+        </button>
+      </div>
+      <div class="stats-row" id="stats-row"></div>
+      <table class="data-table">
+        <thead><tr>
+          <th style="width:26%">Materia prima</th>
+          <th style="width:11%">Stock (kg)</th>
+          <th style="width:12%">Consumo (kg)</th>
+          <th style="width:11%">Restante (kg)</th>
+          <th style="width:18%">Proveedor</th>
+          <th style="width:9%">Plazo</th>
+          <th style="width:11%">Estado</th>
+          <th style="width:2%"></th>
+        </tr></thead>
+        <tbody id="mat-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="sec-alertas" class="section">
+      <div class="sec-title">Alertas de compra</div>
+      <div class="pedidos-stats" id="alertas-stats" style="margin-bottom:14px;"></div>
+      <div id="alertas-list"></div>
+    </div>
+
+    <div id="sec-proveedores" class="section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div class="sec-title" style="margin-bottom:0;">Gestión de proveedores</div>
+        <button class="btn btn-dark" onclick="openNewProv()"><i class="ti ti-plus"></i> Nuevo proveedor</button>
+      </div>
+      <div class="prov-search-bar">
+        <input class="prov-search-input" id="prov-search" type="text" placeholder="🔍 Buscar proveedor o materia prima..." oninput="renderProvGrid()">
+      </div>
+      <div class="prov-grid" id="prov-grid"></div>
+      <div id="prov-edit-wrap"></div>
+    </div>
+
+    <div id="sec-recetas" class="section">
+      <div class="sec-title">Editor de recetas</div>
+      <div class="receta-grid" id="receta-grid"></div>
+      <div id="receta-editor"></div>
+    </div>
+
+    <div id="sec-pedidos" class="section">
+      <div class="pedidos-section">
+        <div class="pedidos-hdr">
+          <div class="sec-title" style="margin-bottom:0;">Pedidos registrados</div>
+        </div>
+        <div class="pedidos-stats" id="pedidos-stats"></div>
+        <div id="pedidos-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- Modal nuevo/editar pedido -->
+<div class="modal-bg" id="modal-pedido" onclick="closeBg('modal-pedido',event)">
+  <div class="modal">
+    <div class="modal-title" id="np-modal-title">Nuevo pedido</div>
+    <div class="modal-sub" id="np-modal-sub">Registra un pedido pendiente de enviar al proveedor</div>
+    <input type="hidden" id="np-edit-id">
+    <div style="margin-top:4px;">
+      <label>Proveedor</label>
+      <select id="np-prov" onchange="updNpMats()"></select>
+      <label>Materia prima</label>
+      <select id="np-mat"></select>
+      <label>Cantidad (kg)</label>
+      <input type="number" id="np-qty" min="1" step="1" placeholder="Ej: 5000">
+      <label>Fecha de recepción</label>
+      <input type="date" id="np-fecha" oninput="updNpHint()" style="width:100%;font-size:12px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:6px 8px;color:var(--text);">
+      <div id="np-fecha-hint" style="font-size:9px;color:var(--text3);margin-top:4px;font-family:var(--mono);"></div>
+      <label>Notas (opcional)</label>
+      <input type="text" id="np-notas" style="width:100%;font-size:12px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:6px 8px;color:var(--text);text-transform:uppercase;" placeholder="Observaciones...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-pedido')">Cancelar</button>
+      <button class="btn btn-dark" id="np-save-btn" onclick="saveNuevoPedido()"><i class="ti ti-device-floppy"></i> Guardar pedido</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="modal-slot" onclick="closeBg('modal-slot',event)">
+  <div class="modal">
+    <div class="modal-title" id="ms-title"></div>
+    <div class="modal-sub" id="ms-sub"></div>
+    <div class="entry-list" id="ms-entries"></div>
+    <div class="divider">
+      <div style="font-size:9px;font-weight:600;color:var(--text2);margin-bottom:8px;letter-spacing:0.06em;">Añadir producto</div>
+      <label>Receta</label>
+      <select id="ms-product" onchange="updPrev()"></select>
+      <label>Número de turnos</label>
+      <input type="number" id="ms-turnos" min="1" max="60" value="1" oninput="updPrev()">
+      <label>Velocidad de línea (kg/hora)</label>
+      <input type="number" id="ms-vel" min="1" max="2000" step="10" value="300" oninput="updPrev()">
+      <div class="preview-box" id="ms-prev"></div>
+      <div style="margin-top:10px;"><button class="btn btn-dark" onclick="addSlot()"><i class="ti ti-plus"></i> Añadir</button></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal('modal-slot')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Modal nuevo proveedor -->
+<div class="modal-bg" id="modal-prov" onclick="closeBg('modal-prov',event)">
+  <div class="modal">
+    <div class="modal-title">Nuevo proveedor</div>
+    <div style="margin-top:12px;">
+      <label>Nombre</label>
+      <input type="text" id="mp-name" style="width:100%;font-size:12px;border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;background:#fff;color:var(--text);" placeholder="Ej: HARINERA SA">
+      <label>Días de suministro</label>
+      <input type="number" id="mp-days" min="1" max="365" value="7" style="width:80px;font-size:14px;font-weight:600;border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;background:#fff;color:var(--text);text-align:center;font-family:var(--mono);">
+      <label>Color identificativo</label>
+      <div class="color-picker" id="mp-colors" style="margin-top:6px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-prov')">Cancelar</button>
+      <button class="btn btn-dark" onclick="saveProv()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal import -->
+<div class="modal-bg" id="modal-import" onclick="closeBg('modal-import',event)">
+  <div class="modal" style="width:500px;">
+    <div class="modal-title">Importar stock real</div>
+    <div id="imp-summary" style="font-size:10px;color:var(--text2);margin:8px 0;"></div>
+    <div class="import-list" id="imp-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-import')">Cancelar</button>
+      <button class="btn btn-dark" onclick="applyImport()"><i class="ti ti-check"></i> Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const RECETAS=[
+  {id:'tarta_abuela',nombre:'Tarta Abuela',color:'blue',ingredientes:[{id:'tostada_fb',nombre:'TOSTADA FB AGAO 10KG POSTRES',kgMasa:91,x:'309108'},{id:'leche_desnatada',nombre:'LECHE DESNATADA EN POLVO',kgMasa:11.667,x:'1014'},{id:'azucar_pi',nombre:'AZUCAR PI 73.5-67',kgMasa:18.667,x:'1048'},{id:'azucar_sacos',nombre:'AZUCAR BLANQUILLA SACAROSA SACOS',kgMasa:35,x:'AZUCAR SACOS'},{id:'margarina',nombre:'MARGARINA CREMA',kgMasa:35,x:'MARGARINA'},{id:'cgel',nombre:'C*GEL INSTANT 12018 ALMI. PREG SP 25 K',kgMasa:4.667,x:'1011'}]},
+  {id:'blanca_canela',nombre:'Blanca Canela',color:'teal',ingredientes:[{id:'margarina_crema',nombre:'MARGARINA CREMA',kgMasa:25,x:'1015'},{id:'aceite_girasol',nombre:'ACEITE GIRASOL REFINADO',kgMasa:6.251,x:'1006'},{id:'azucar_pi',nombre:'AZUCAR PI 73.5-67',kgMasa:9.645,x:'1048'},{id:'white_biscuit',nombre:'WHITE BISCUIT HALF SPHERE 15MM (SAGR132D)',kgMasa:79.164,x:'1017'},{id:'azucar_polvo',nombre:'AZUCAR EN POLVO LM 48M',kgMasa:50.654,x:'1004'},{id:'azucar_blanquilla',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:5.56,x:'AZUCAR BLANQUILLA'},{id:'leche_desnatada',nombre:'LECHE DESNATADA EN POLVO',kgMasa:3.187,x:'1014'},{id:'guar_gum',nombre:'GUAR GUM 5000-200 MESH-ALTRAFINE',kgMasa:0.543,x:'1009'},{id:'sal_fina',nombre:'SAL FINA SECA SALINERA',kgMasa:0.646,x:'1016'},{id:'canela',nombre:'CANELA CEYLAN 0000 MOLIDA 4KG',kgMasa:0.103,x:'1023'},{id:'cgel',nombre:'C*GEL INSTANT 12018 ALMI. PREG SP 25 K',kgMasa:7.545,x:'1011'}]},
+  {id:'masa_coco',nombre:'Masa Coco (309057)',color:'coral',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:92.191,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:29.951,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.284,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.84,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:147.824,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.578,x:'1008'},{id:'aroma_vainilla',nombre:'AROMA DE VAINILLA 91717-73',kgMasa:0.763,x:'1025'}]},
+  {id:'masa_mango',nombre:'Masa Mango (309059)',color:'amber',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:90.237,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:30.081,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.294,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.876,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:148.472,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.648,x:'1008'},{id:'aroma_mango',nombre:'AROMA DE MANGO QL14321',kgMasa:0.866,x:'1024'}]},
+  {id:'masa_verde',nombre:'Masa Verde (309063)',color:'green',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:89.293,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:29.765,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.27,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.792,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:148.222,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.474,x:'1008'},{id:'futurals_green',nombre:'FUTURALS 7404 APPLE GREEN',kgMasa:1.362,x:'1030'}]},
+  {id:'masa_marron',nombre:'Masa Marrón (309064)',color:'purple',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:91.117,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:29.752,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.269,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.788,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:147.279,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.467,x:'1008'},{id:'burnt_sugar',nombre:'302000501 BURNT SUGAR BS111 1245',kgMasa:1.57,x:'1028'}]},
+  {id:'masa_chocolate',nombre:'Masa Chocolate (309065)',color:'pink',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:93.769,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:30.013,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.289,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.857,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:146.784,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.612,x:'1008'},{id:'natural_brown',nombre:'NATURAL BROWN L-WS',kgMasa:5.241,x:'1027'}]},
+  {id:'masa_amarilla',nombre:'Masa Amarilla (309066)',color:'blue',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:90.242,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:30.081,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.294,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.876,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:149.825,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.648,x:'1008'},{id:'futurals_yellow',nombre:'FUTURALS CARTHAMUS',kgMasa:0.093,x:'1033'}]},
+  {id:'masa_cheesecake',nombre:'Masa Cheesecake (309067)',color:'teal',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:91.885,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:29.852,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.277,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.815,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:146.88,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.523,x:'1008'}]},
+  {id:'masa_mango_maracuya',nombre:'Masa Mango Maracuyá (309074)',color:'coral',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:89.668,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:29.893,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.272,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.834,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:147.529,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.542,x:'1008'},{id:'maracuya',nombre:'MARACUYA YELLOW L-WS',kgMasa:3.964,x:'1026'}]},
+  {id:'masa_purpura',nombre:'Masa Púrpura (309075)',color:'purple',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:87.764,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:29.641,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.261,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.000467,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.76,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:147.64,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.408,x:'1008'},{id:'fruitmax_red',nombre:'718832 FRUITMAX RED 107 WS 15KG',kgMasa:5.799,x:'1029'}]},
+  {id:'masa_choco_avellana',nombre:'Masa Choco Avellana (309094)',color:'amber',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:91.734,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:30.112,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.297,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001083,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.882,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:147.262,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.666,x:'1008'},{id:'natural_brown',nombre:'NATURAL BROWN L-WS',kgMasa:3.74,x:'1027'}]},
+  {id:'masa_pistacho',nombre:'Masa Pistacho Aldi (309095)',color:'green',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:89.373,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:29.791,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.273,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.000981,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.799,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:148.356,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.489,x:'1008'},{id:'futurals_green',nombre:'FUTURALS 7404 APPLE GREEN',kgMasa:0.85,x:'1030'},{id:'burnt_sugar',nombre:'302000501 BURNT SUGAR BS111 1245',kgMasa:0.093,x:'1028'}]},
+  {id:'masa_tropical',nombre:'Masa Tropical Aldi (309096)',color:'pink',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:89.108,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:29.702,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.266,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.000502,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.776,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:147.938,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.489,x:'1008'},{id:'fruitmax_red',nombre:'718832 FRUITMAX RED 107 WS 15KG',kgMasa:3.26,x:'1029'}]},
+  {id:'masa_amarilla_americana',nombre:'Masa Amarilla Americana (309099)',color:'blue',ingredientes:[{id:'harina',nombre:'HARINA DE ARROZ',kgMasa:90.241,x:'1000'},{id:'almidon',nombre:'ALMIDON TAPIOCA-MANDIOCA. POLVILLO',kgMasa:30.081,x:'1010'},{id:'verol',nombre:'VEROL GH90 POLVO S25SC. MIX COCCION',kgMasa:2.284,x:'1007'},{id:'novamyl',nombre:'NOVAMYL 3D CONC (MIX MOCHI)',kgMasa:0.001021,x:'1032'},{id:'aceite',nombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L',kgMasa:7.875,x:'ACEITE GIRASOL DEPOSITO'},{id:'azucar_bigbag',nombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG',kgMasa:149.82,x:'AZUCAR BIGBAG'},{id:'trehalosa',nombre:'TREHA-TREHALOSE',kgMasa:16.65,x:'1008'},{id:'exberry_yellow',nombre:'EXBERRY SHADE BRIGHT YELLOW',kgMasa:0.13,x:'EXBERRY'}]},
+];
+
+// pesoMasa: kg de UNA masa (lote) de cada receta — único dato editable del cálculo.
+// Nº de masas = (turnos × HORAS × velocidad) / pesoMasa. La velocidad se elige al programar.
+// (La inicialización por defecto se hace más abajo, tras declarar las constantes.)
+
+// XMAP: código x → {id interno, excelNombre exacto para matching}
+// Para códigos numéricos: match por [XXXX] extraído del "Nombre mostrado"
+// Para claves de texto: match por nombre exacto normalizado
+const XMAP={};
+for(const r of RECETAS)for(const i of r.ingredientes){
+  if(i.x&&!XMAP[i.x])XMAP[i.x]={id:i.id,nombre:i.nombre};
+}
+// Mapeo explícito de claves de texto → nombre exacto en el Excel
+// (para los ingredientes que no tienen código numérico [XXXX])
+const XMAP_EXACT={
+  'AZUCAR SACOS':   {id:'azucar_sacos',   excelNombre:'AZUCAR BLANQUILLA SACAROSA SACOS'},
+  'MARGARINA':      {id:'margarina',       excelNombre:'MARGARINA CREMA'},
+  'AZUCAR BIGBAG':  {id:'azucar_bigbag',  excelNombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG'},
+  'AZUCAR BLANQUILLA':{id:'azucar_blanquilla', excelNombre:'AZUCAR BLANQUILLA SACAROSA BIG BAG'},
+  'ACEITE GIRASOL DEPOSITO':{id:'aceite', excelNombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L'},
+  'EXBERRY':        {id:'exberry_yellow',  excelNombre:'EXBERRY SHADE BRIGHT YELLOW'},
+};
+const SF={tostada_fb:14500,leche_desnatada:6422.66,azucar_pi:1076.48,azucar_sacos:14000,margarina:22338,cgel:0,margarina_crema:0,aceite_girasol:0,white_biscuit:8000,azucar_polvo:5760,azucar_blanquilla:5761,guar_gum:69.91,sal_fina:70.91,canela:15.17,harina:25440.67,almidon:6344.75,verol:1193.017,novamyl:1339.5,aceite:4111.45,azucar_bigbag:22295.76,trehalosa:1138.23,aroma_vainilla:277.91,aroma_mango:277.91,futurals_green:277.91,burnt_sugar:278.91,natural_brown:277.91,maracuya:277.91,fruitmax_red:277.91,futurals_yellow:277.91,exberry_yellow:277.91};
+let stock={...SF},stockDate=null,pending=null;
+let pedidos=[]; // {id, provId, matId, qty, fecha(YYYY-MM-DD), notas}
+const LS_KEY='ccmp_pedidos'; // (compatibilidad; el guardado real es saveState)
+const HORAS=8;        // horas por turno
+const VEL_DEF=300;    // velocidad de línea por defecto (kg/hora)
+const KPT=HORAS*VEL_DEF;   // kg de masa por turno a velocidad por defecto (2400) — solo referencia
+// pesoMasa por receta: kg de UNA masa (lote). Único dato editable del cálculo.
+// Nº de masas por turno = (HORAS × velocidad) / pesoMasa. Por defecto velocidad=300.
+for(const r of RECETAS){if(r.pesoMasa==null)r.pesoMasa=425;}
+let vY=new Date().getFullYear(),vM=new Date().getMonth();
+let prog={},activeWK=null,activeSL=null,activeRID=null,activePID=null;
+
+let proveedores=[
+  {id:'prov1',nombre:'Harinera SA',dias:5,color:'#378ADD',materias:['harina','almidon']},
+  {id:'prov2',nombre:'Azucarera Iberia',dias:7,color:'#639922',materias:['azucar_bigbag','trehalosa','azucar_pi','azucar_sacos','azucar_polvo','azucar_blanquilla']},
+  {id:'prov3',nombre:'Aceites del Sur',dias:3,color:'#BA7517',materias:['aceite','aceite_girasol']},
+  {id:'prov4',nombre:'Aditivos Norte',dias:10,color:'#7F77DD',materias:['verol','novamyl','cgel','guar_gum']},
+  {id:'prov5',nombre:'Aromas y Colorantes',dias:14,color:'#D85A30',materias:['aroma_vainilla','aroma_mango','futurals_green','futurals_yellow','burnt_sugar','natural_brown','maracuya','fruitmax_red','exberry_yellow']},
+  {id:'prov6',nombre:'Lácteos Norte',dias:4,color:'#1D9E75',materias:['leche_desnatada','margarina','margarina_crema']},
+];
+const PROV_COLORS=['#378ADD','#639922','#BA7517','#7F77DD','#D85A30','#1D9E75','#993556','#185FA5','#854F0B','#E24B4A','#0F6E56','#633806'];
+let tmpColor=PROV_COLORS[0];
+
+// ───────────── PERSISTENCIA COMPARTIDA (backend PHP) ─────────────
+// Todos los datos (stock, calendario, recetas, proveedores, pedidos) se guardan
+// en el servidor mediante data.php, así se comparten entre personas/dispositivos.
+// Si no hay servidor (abierto en local), usa localStorage como respaldo.
+const API='data.php';
+const LS_STATE='ccmp_state';
+function collectState(){
+  return {
+    stock, stockDate, prog, proveedores, pedidos,
+    recetas: RECETAS.map(r=>({id:r.id,nombre:r.nombre,pesoMasa:r.pesoMasa,
+      ing:r.ingredientes.map(i=>({id:i.id,kgMasa:i.kgMasa}))}))
+  };
+}
+function applyState(s){
+  if(!s||typeof s!=='object')return;
+  if(s.stock&&typeof s.stock==='object')stock=s.stock;
+  if('stockDate'in s)stockDate=s.stockDate;
+  if(s.prog&&typeof s.prog==='object')prog=s.prog;
+  if(Array.isArray(s.proveedores))proveedores=s.proveedores;
+  if(Array.isArray(s.pedidos))pedidos=s.pedidos;
+  if(Array.isArray(s.recetas))for(const sr of s.recetas){
+    const r=RECETAS.find(x=>x.id===sr.id);if(!r)continue;
+    if(sr.nombre)r.nombre=sr.nombre;
+    if(sr.pesoMasa!=null)r.pesoMasa=sr.pesoMasa;
+    if(Array.isArray(sr.ing))for(const si of sr.ing){
+      const ing=r.ingredientes.find(x=>x.id===si.id);
+      if(ing&&si.kgMasa!=null)ing.kgMasa=si.kgMasa;
+    }
+  }
+}
+let _saveTimer=null;
+function saveState(){
+  const s=collectState();
+  try{localStorage.setItem(LS_STATE,JSON.stringify(s));}catch(e){}
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>{
+    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)})
+      .catch(()=>{});
+  },400);
+}
+async function loadState(){
+  try{
+    const r=await fetch(API,{cache:'no-store'});
+    if(r.ok){const s=await r.json();if(s&&Object.keys(s).length){applyState(s);return;}}
+  }catch(e){}
+  try{const d=localStorage.getItem(LS_STATE);if(d)applyState(JSON.parse(d));}catch(e){}
+}
+// ─────────────────────────────────────────────────────────────────
+
+function getProvForMat(id){return proveedores.find(p=>p.materias.includes(id));}
+
+function calcAgotamiento(matId){
+  // Walk weeks in order (current month + next 2 months) consuming real programmed stock
+  // Returns {semana, fecha (start of week), stockRestante} when stock runs out, or null if OK
+  let stockRest=stock[matId]||0;
+  const today=new Date();today.setHours(0,0,0,0);
+
+  // Build ordered list of weeks across current + next months to cover multi-month programming
+  const weeksToCheck=[];
+  for(let mo=0;mo<3;mo++){
+    const yr2=vM+mo>11?vY+1:vY;
+    const mo2=(vM+mo)%12;
+    for(const w of getWeeks(yr2,mo2)){
+      // avoid duplicates (weeks spanning month boundary appear in both months)
+      if(!weeksToCheck.find(x=>x.key===w.key))weeksToCheck.push(w);
+    }
+  }
+  weeksToCheck.sort((a,b)=>a.mon-b.mon);
+
+  for(const w of weeksToCheck){
+    // Only process weeks from today onwards
+    if(w.sun<today)continue;
+    const ents=[...ge(w.key,0),...ge(w.key,1)];
+    if(!ents.length)continue;
+    const c=calcC(ents);
+    const consumoSemana=c[matId]?c[matId].kg:0;
+    if(consumoSemana<=0)continue;
+    stockRest-=consumoSemana;
+    if(stockRest<0){
+      return{semana:w.w,fecha:w.mon,stockRestante:stockRest+consumoSemana,consumoSemana};
+    }
+  }
+  return null; // stock covers all programmed weeks
+}
+function fmtShort(d){return `${d.getDate()} ${['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][d.getMonth()]}`;}
+
+function sk(w,s){return `${w}__${s}`;}
+function ge(w,s){const k=sk(w,s);if(!prog[k])prog[k]=[];return prog[k];}
+function allMonth(){const wks=getWeeks(vY,vM);let a=[];for(const w of wks){a=a.concat(ge(w.key,0));a=a.concat(ge(w.key,1));}return a;}
+function isoWeek(d){const u=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const dn=u.getUTCDay()||7;u.setUTCDate(u.getUTCDate()+4-dn);const ys=new Date(Date.UTC(u.getUTCFullYear(),0,1));return{w:Math.ceil((((u-ys)/86400000)+1)/7),y:u.getUTCFullYear()};}
+function getWeeks(yr,mo){const ws=[],seen=new Set();const dim=new Date(yr,mo+1,0).getDate();for(let d=1;d<=dim;d++){const dt=new Date(yr,mo,d);const{w,y}=isoWeek(dt);const k=`${w}-${y}`;if(!seen.has(k)){seen.add(k);const dow=dt.getDay()||7;const mon=new Date(dt);mon.setDate(dt.getDate()-dow+1);const sun=new Date(mon);sun.setDate(mon.getDate()+6);ws.push({w,y,key:k,mon,sun});}}return ws;}
+function fd(d){return `${d.getDate()} ${['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][d.getMonth()]}`;}
+// kg de masa que produce una entrada en un turno = HORAS × velocidad (kg/h)
+function kgPorTurno(e){return HORAS*((e&&e.v)||VEL_DEF);}
+function calcC(entries){const c={};for(const e of entries){const r=RECETAS.find(x=>x.id===e.rid);if(!r)continue;const nm=(e.t*kgPorTurno(e))/(r.pesoMasa||425);for(const i of r.ingredientes){if(!c[i.id])c[i.id]={nombre:i.nombre,kg:0};c[i.id].kg+=i.kgMasa*nm;}}return c;}
+function kgTotal(entries){return entries.reduce((s,e)=>s+e.t*kgPorTurno(e),0);}
+function masasTotal(entries){return entries.reduce((s,e)=>{const r=RECETAS.find(x=>x.id===e.rid);return s+(e.t*kgPorTurno(e))/((r&&r.pesoMasa)||425);},0);}
+function allIng(){const m={};for(const r of RECETAS)for(const i of r.ingredientes)if(!m[i.id])m[i.id]=i.nombre;return m;}
+
+function getOrdersForWeek(w){
+  // Match by reception date (fecha pedido + días proveedor) falling within this week
+  const monT=w.mon.getTime();const sunT=w.sun.getTime()+86399999;
+  return pedidos.filter(p=>{
+    const prov=proveedores.find(x=>x.id===p.provId);
+    const recepcion=new Date(p.fecha+'T12:00:00');
+    if(prov)recepcion.setDate(recepcion.getDate()+prov.dias);
+    return recepcion.getTime()>=monT&&recepcion.getTime()<=sunT;
+  });
+}
+
+function renderCal(){
+  const MN=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  document.getElementById('cal-title').textContent=`${MN[vM]} ${vY}`;
+  const c=document.getElementById('week-blocks');c.innerHTML='';
+  const wks=getWeeks(vY,vM);const ti=isoWeek(new Date());
+  for(const w of wks){
+    const cur=w.w===ti.w&&w.y===ti.y;
+    const blk=document.createElement('div');blk.className=`week-block${cur?' cw':''}`;
+    for(let sl=0;sl<2;sl++){
+      const ents=ge(w.key,sl);const tt=ents.reduce((s,e)=>s+e.t,0);const ttKg=kgTotal(ents);
+      const row=document.createElement('div');row.className=`week-row ${sl===0?'top':'bot'}`;
+      const nc=document.createElement('div');nc.className='wkn';
+      if(sl===0)nc.innerHTML=`S${w.w}<div class="wkr">${fd(w.mon)}–${fd(w.sun)}</div>${cur?'<span class="cw-badge">ACTUAL</span>':''}`;
+      row.appendChild(nc);
+      const ec=document.createElement('div');ec.className='wke';ec.onclick=()=>openSlot(w,sl);
+      const ch=document.createElement('div');ch.className='chips';
+      if(!ents.length&&sl>0){
+        // slot 1 (bot): show orders here if any
+      }
+      if(!ents.length)ch.innerHTML=`<span class="chip-add"><i class="ti ti-plus"></i> AÑADIR</span>`;
+      else for(const e of ents){const r=RECETAS.find(x=>x.id===e.rid);const c2=document.createElement('span');c2.className=`chip chip-${r?r.color:'blue'}`;c2.textContent=`${r?r.nombre.toUpperCase():e.rid} ×${e.t}`;ch.appendChild(c2);}
+
+      // Show order chips on slot 0 (top row), non-clickable overlay after production chips
+      if(sl===0){
+        const wOrders=getOrdersForWeek(w);
+        for(const p of wOrders){
+          const prov=proveedores.find(x=>x.id===p.provId);
+          const allI=allIng();const matNom=allI[p.matId]||p.matId;
+          const recepcion=new Date(p.fecha+'T12:00:00');
+          if(prov)recepcion.setDate(recepcion.getDate()+prov.dias);
+          const chip=document.createElement('span');
+          chip.className='chip chip-order';
+          chip.title=`RECEPCIÓN: ${fmtShort(recepcion)} · ${matNom.toUpperCase()} · ${Number(p.qty).toLocaleString()} KG`;
+          chip.innerHTML=`<i class="ti ti-package"></i>${fmtShort(recepcion)} · ${prov?prov.nombre.toUpperCase():'PROV.'} ${Number(p.qty).toLocaleString()}KG`;
+          chip.onclick=(ev)=>{ev.stopPropagation();showTab('pedidos',document.querySelector('[onclick*="pedidos"]'));renderPedidos();};
+          ch.appendChild(chip);
+        }
+      }
+
+      ec.appendChild(ch);row.appendChild(ec);
+      const tc=document.createElement('div');tc.className='wkt';
+      if(tt>0)tc.innerHTML=`${tt} T<div class="wkt-s">${Math.round(ttKg).toLocaleString()} KG</div>`;
+      else tc.innerHTML='<span style="color:var(--text3)">—</span>';
+      row.appendChild(tc);blk.appendChild(row);
+    }
+
+    // Production summary pills for the week
+    const allEnts=[...ge(w.key,0),...ge(w.key,1)];
+    if(allEnts.length){
+      const summary={};
+      for(const e of allEnts){
+        const r=RECETAS.find(x=>x.id===e.rid);
+        const key=e.rid;
+        if(!summary[key])summary[key]={nombre:r?r.nombre:'?',color:r?r.color:'blue',turnos:0,kg:0,masas:0};
+        summary[key].turnos+=e.t;
+        summary[key].kg+=e.t*kgPorTurno(e);
+        summary[key].masas+=(e.t*kgPorTurno(e))/((r&&r.pesoMasa)||425);
+      }
+      const pillRow=document.createElement('div');pillRow.className='prod-summary';
+      for(const[,s] of Object.entries(summary)){
+        const pill=document.createElement('span');
+        pill.className=`prod-pill prod-pill-${s.color}`;
+        pill.innerHTML=`<i class="ti ti-box"></i>${s.nombre.toUpperCase()} · ${s.turnos}T · ${s.masas.toFixed(1)} MASAS · ${Math.round(s.kg).toLocaleString()}KG`;
+        pillRow.appendChild(pill);
+      }
+      blk.appendChild(pillRow);
+    }
+
+    c.appendChild(blk);
+  }
+}
+
+function openSlot(w,sl){
+  activeWK=w.key;activeSL=sl;
+  document.getElementById('ms-title').textContent=`S${w.w} — FILA ${sl+1}`;
+  document.getElementById('ms-sub').textContent=`${fd(w.mon)} AL ${fd(w.sun)}`;
+  document.getElementById('ms-product').innerHTML=RECETAS.map(r=>`<option value="${r.id}">${r.nombre.toUpperCase()}</option>`).join('');
+  document.getElementById('ms-turnos').value=1;document.getElementById('ms-vel').value=VEL_DEF;updPrev();renderSlotEntries();
+  document.getElementById('modal-slot').classList.add('open');
+}
+function renderSlotEntries(){
+  const ents=ge(activeWK,activeSL);const el=document.getElementById('ms-entries');el.innerHTML='';
+  if(!ents.length){el.innerHTML='<p style="font-size:10px;color:var(--text3)">SIN PRODUCTOS EN ESTA FILA.</p>';return;}
+  for(let i=0;i<ents.length;i++){const e=ents[i];const r=RECETAS.find(x=>x.id===e.rid);const masas=(e.t*kgPorTurno(e))/((r&&r.pesoMasa)||425);const row=document.createElement('div');row.className='entry-row';row.innerHTML=`<div><div class="entry-info">${r?r.nombre.toUpperCase():e.rid}</div><div class="entry-meta">${e.t} TURNOS · ${(e.v||VEL_DEF)} KG/H · ${masas.toFixed(1)} MASAS · ${Math.round(e.t*kgPorTurno(e)).toLocaleString()} KG</div></div><button class="btn-del-sm" onclick="delSlot(${i})"><i class="ti ti-trash"></i></button>`;el.appendChild(row);}
+}
+function delSlot(i){ge(activeWK,activeSL).splice(i,1);saveState();renderSlotEntries();renderCal();renderStock();}
+function addSlot(){const rid=document.getElementById('ms-product').value;const t=parseInt(document.getElementById('ms-turnos').value);const v=parseInt(document.getElementById('ms-vel').value)||VEL_DEF;if(!rid||!t)return;ge(activeWK,activeSL).push({rid,t,v});saveState();document.getElementById('ms-turnos').value=1;updPrev();renderSlotEntries();renderCal();renderStock();}
+function updPrev(){const t=parseInt(document.getElementById('ms-turnos').value)||0;const v=parseInt(document.getElementById('ms-vel').value)||VEL_DEF;const rid=document.getElementById('ms-product').value;const r=RECETAS.find(x=>x.id===rid);const pm=(r&&r.pesoMasa)||425;const kgT=t*HORAS*v;document.getElementById('ms-prev').textContent=`${t} TURNOS × ${HORAS} H × ${v} KG/H = ${kgT.toLocaleString()} KG ÷ ${pm.toLocaleString()} = ${(kgT/pm).toFixed(1)} MASAS`;}
+
+function renderStock(){
+  const ents=allMonth();const c=calcC(ents);
+  const tt=ents.reduce((s,e)=>s+e.t,0);const kg=kgTotal(ents);let ac=0;
+  document.getElementById('stats-row').innerHTML=`
+    <div class="stat-card"><div class="stat-label">Turnos programados</div><div class="stat-value">${tt}</div><div class="stat-sub">ESTE MES</div></div>
+    <div class="stat-card"><div class="stat-label">KG producción total</div><div class="stat-value">${Math.round(kg).toLocaleString()}</div><div class="stat-sub">KG TOTALES</div></div>
+    <div class="stat-card"><div class="stat-label">Materias activas</div><div class="stat-value">${Object.keys(c).length}</div><div class="stat-sub">INGREDIENTES</div></div>
+  `;
+  const allI=allIng();const tb=document.getElementById('mat-tbody');tb.innerHTML='';
+  // Build full list: all ingredients in recipes + any extra stock imported
+  const allIds=new Set([...Object.keys(allI),...Object.keys(stock).filter(k=>stock[k]>0)]);
+  for(const id of allIds){
+    const nom=allI[id]||id;
+    const cons=c[id]?c[id].kg:0;
+    const st=stock[id]||0;
+    // Skip if no stock and no consumption — nothing to show
+    if(st===0&&cons===0)continue;
+    const rest=st-cons;const pct=st>0?rest/st:-1;
+    const prov=getProvForMat(id);
+    let badge,estado;
+    if(cons===0){badge='badge-ok';estado='SIN CONSUMO';}
+    else if(rest<0){badge='badge-danger';estado='SIN STOCK';ac++;}
+    else if(pct<0.2){badge='badge-warn';estado='STOCK BAJO';ac++;}
+    else{badge='badge-ok';estado='OK';}
+    const provCell=prov?`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:${prov.color};display:inline-block;flex-shrink:0;"></span>${prov.nombre.toUpperCase()}</span>`:'<span style="color:var(--text3)">—</span>';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="font-family:var(--font)">${nom.toUpperCase()}</td><td>${st>0?Math.round(st).toLocaleString():'—'}</td><td>${cons>0?Math.round(cons).toLocaleString():'—'}</td><td style="font-weight:${rest<0?600:400};color:${rest<0?'var(--danger-tx)':'inherit'}">${cons>0?Math.round(rest).toLocaleString():'—'}</td><td style="font-family:var(--font)">${provCell}</td><td>${prov?prov.dias+'D':'—'}</td><td><span class="badge ${badge}">${estado}</span></td><td><button class="btn-del-sm" title="Eliminar materia prima" onclick="deleteMat('${id}','${nom.replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i></button></td>`;
+    tb.appendChild(tr);
+  }
+  const nb=document.getElementById('alert-badge');nb.textContent=ac;nb.style.display=ac>0?'inline':'none';
+  // Check if any alert is urgent (deadline <= 2 days) to trigger pulse
+  const today=new Date();today.setHours(0,0,0,0);
+  let isUrgent=false;
+  for(const [id,d] of Object.entries(c)){
+    const st=stock[id]||0;const rest=st-d.kg;const pct=st>0?rest/st:-1;
+    if(rest>=0&&pct>=0.2)continue;
+    const prov=getProvForMat(id);
+    const agot=calcAgotamiento(id);
+    if(prov&&agot){
+      const dl=new Date(agot.fecha);dl.setDate(dl.getDate()-prov.dias);
+      const daysLeft=Math.floor((dl-today)/86400000);
+      if(daysLeft<=2){isUrgent=true;break;}
+    }
+  }
+  nb.classList.toggle('urgent',isUrgent);
+  renderAlerts(c);
+}
+
+function deleteMat(matId,matNom){
+  if(!confirm(`¿ELIMINAR "${matNom.toUpperCase()}" DEL STOCK?\n\nSe eliminará de la lista de seguimiento pero no de las recetas.`))return;
+  delete stock[matId];
+  // Remove from SF so it doesn't come back on reset
+  delete SF[matId];
+  renderStock();
+}
+
+function getNextPedidoForMat(matId){
+  const today=new Date();today.setHours(0,0,0,0);
+  const upcoming=pedidos.filter(p=>p.matId===matId&&new Date(p.fecha+'T12:00:00')>=today);
+  if(!upcoming.length)return null;
+  upcoming.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  return upcoming[0];
+}
+
+let alertFiltro='todas';
+
+function setAlertFiltro(f){alertFiltro=f;const c=calcC(allMonth());renderAlerts(c);}
+
+function renderAlerts(c){
+  const list=document.getElementById('alertas-list');list.innerHTML='';
+  const statsEl=document.getElementById('alertas-stats');
+  if(!c||!Object.keys(c).length){
+    if(statsEl)statsEl.innerHTML='';
+    list.innerHTML='<div class="alert-box alert-info"><div class="alert-title">SIN PROGRAMACIÓN ACTIVA</div><div class="alert-body">AÑADE TURNOS EN EL CALENDARIO PARA VER ALERTAS.</div></div>';return;}
+  const today=new Date();today.setHours(0,0,0,0);
+  const items=[];
+  for(const [id,d] of Object.entries(c)){
+    const st=stock[id]||0;const rest=st-d.kg;const pct=st>0?rest/st:-1;
+    if(rest>=0&&pct>=0.2)continue;
+    const prov=getProvForMat(id);const agot=calcAgotamiento(id);
+    const nextP=getNextPedidoForMat(id);
+    let isUrgent=false;
+    if(prov&&agot){const dl=new Date(agot.fecha);dl.setDate(dl.getDate()-prov.dias);const daysLeft=Math.floor((dl-today)/86400000);if(daysLeft<=2)isUrgent=true;}
+    if(rest<0)isUrgent=true;
+    // nivel depends solely on whether a pedido exists
+    const nivel=nextP?'con_pedido':'sin_pedido';
+    items.push({id,d,st,rest,pct,prov,agot,nivel,nextP,isUrgent});
+  }
+  const order={sin_pedido:0,con_pedido:1};
+  items.sort((a,b)=>{
+    if(order[a.nivel]!==order[b.nivel])return order[a.nivel]-order[b.nivel];
+    if(a.isUrgent!==b.isUrgent)return a.isUrgent?-1:1;
+    if(a.agot&&b.agot)return a.agot.fecha-b.agot.fecha;
+    if(a.agot)return -1;if(b.agot)return 1;
+    return a.rest-b.rest;
+  });
+  const counts={todas:items.length,urgente:items.filter(it=>it.isUrgent).length,sin_pedido:items.filter(it=>it.nivel==='sin_pedido').length,con_pedido:items.filter(it=>it.nivel==='con_pedido').length};
+  if(statsEl){statsEl.innerHTML=`
+    <div class="pedido-stat${alertFiltro==='todas'?' pf-active':''}" onclick="setAlertFiltro('todas')" style="cursor:pointer;">
+      <div class="pedido-stat-val">${counts.todas}</div><div class="pedido-stat-lbl">TOTAL ALERTAS</div></div>
+    <div class="pedido-stat danger${alertFiltro==='urgente'?' pf-active':''}" onclick="setAlertFiltro('urgente')" style="cursor:pointer;">
+      <div class="pedido-stat-val">${counts.urgente||0}</div><div class="pedido-stat-lbl">URGENTES</div></div>
+    <div class="pedido-stat warn${alertFiltro==='sin_pedido'?' pf-active':''}" onclick="setAlertFiltro('sin_pedido')" style="cursor:pointer;">
+      <div class="pedido-stat-val">${counts.sin_pedido||0}</div><div class="pedido-stat-lbl">SIN PEDIDO</div></div>
+    <div class="pedido-stat${alertFiltro==='con_pedido'?' pf-active':''}" onclick="setAlertFiltro('con_pedido')" style="cursor:pointer;background:var(--success-bg);border-color:var(--success-bd);">
+      <div class="pedido-stat-val" style="color:var(--success-tx)">${counts.con_pedido||0}</div><div class="pedido-stat-lbl" style="color:var(--success-tx)">CON PEDIDO</div></div>`;}
+  if(!items.length){list.innerHTML='<div class="alert-box alert-success"><div class="alert-title"><i class="ti ti-circle-check"></i> TODO EN ORDEN</div><div class="alert-body">EL STOCK CUBRE TODA LA PROGRAMACIÓN DEL MES.</div></div>';return;}
+  const filtered=alertFiltro==='todas'?items:alertFiltro==='urgente'?items.filter(it=>it.isUrgent):items.filter(it=>it.nivel===alertFiltro);
+  if(!filtered.length){list.innerHTML='<div class="alert-box alert-info"><div class="alert-title">SIN ALERTAS EN ESTA CATEGORÍA</div></div>';return;}
+  for(const {id,d,st,rest,pct,prov,agot,nivel,nextP} of filtered){
+    const isOut=rest<0;let deadlineHtml='';
+    if(prov&&agot){
+      const dl=new Date(agot.fecha);dl.setDate(dl.getDate()-prov.dias);
+      const daysLeft=Math.floor((dl-today)/86400000);
+      const agotStr=`S${agot.semana} (${fmtShort(agot.fecha)})`;const dlStr=fmtShort(dl);
+      let cls,icon,msg;
+      if(daysLeft<0){cls='dl-urgent';icon='🚨';msg=`PLAZO SUPERADO — ${Math.abs(daysLeft)} DÍA${Math.abs(daysLeft)!==1?'S':''} DE RETRASO`;}
+      else if(daysLeft<=2){cls='dl-urgent';icon='⚠️';msg=`PEDIR HOY — SOLO QUEDAN ${daysLeft} DÍA${daysLeft!==1?'S':''}`;}
+      else if(daysLeft<=7){cls='dl-warn';icon='📅';msg=`PEDIR ANTES DEL ${dlStr} — QUEDAN ${daysLeft} DÍAS`;}
+      else{cls='dl-ok';icon='📅';msg=`PEDIR ANTES DEL ${dlStr} — QUEDAN ${daysLeft} DÍAS`;}
+      let nextOrderHtml='';
+      if(nextP){
+        const nprov=proveedores.find(x=>x.id===nextP.provId);
+        const llegada=new Date(nextP.fecha+'T12:00:00');if(nprov)llegada.setDate(llegada.getDate()+nprov.dias);
+        const daysToArr=Math.floor((llegada-today)/86400000);
+        const arrIcon=daysToArr<0?'circle-check':'truck-delivery';
+        const arrLabel=daysToArr<0?'RECIBIDO':'PEDIDO REALIZADO';
+        const arrDays=daysToArr>=0?'(EN '+daysToArr+' DÍA'+(daysToArr!==1?'S':'')+')'  :'(YA LLEGADO)';
+        nextOrderHtml='<div class="order-next-box confirmed"><i class="ti ti-'+arrIcon+'"></i><span>'+arrLabel+' · LLEGADA <strong>'+fmtShort(llegada)+'</strong> · '+Number(nextP.qty).toLocaleString()+' KG <span style="font-weight:400;opacity:0.8;">'+arrDays+'</span></span></div>';
+      } else {
+        nextOrderHtml=`<div class="order-next-box pending"><i class="ti ti-alert-triangle"></i><span>SIN PEDIDO REGISTRADO — <a href="#" onclick="openNuevoPedidoForMat('${id}');return false;" style="color:inherit;text-decoration:underline;font-weight:700;">CREAR PEDIDO</a></span></div>`;
+      }
+      deadlineHtml=`<div class="alert-row"><div class="deadline-box ${cls}">${icon} ${msg}</div>${nextOrderHtml}</div>
+        <div class="alert-meta"><span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:${prov.color};display:inline-block;"></span>${prov.nombre.toUpperCase()}</span><span>·</span><span>PLAZO ENTREGA: ${prov.dias} DÍAS</span><span>·</span><span>SE AGOTA EN: ${agotStr}</span><span>·</span><span>FECHA LÍMITE PEDIDO: ${dlStr}</span></div>`;
+    } else if(prov&&!agot){
+      const nextO=nextP?`<div class="order-next-box confirmed"><i class="ti ti-truck-delivery"></i><span>PEDIDO REALIZADO</span></div>`:`<div class="order-next-box pending"><i class="ti ti-alert-triangle"></i><span>SIN PEDIDO — <a href="#" onclick="openNuevoPedidoForMat('${id}');return false;" style="color:inherit;text-decoration:underline;font-weight:700;">CREAR PEDIDO</a></span></div>`;
+      deadlineHtml=`<div class="alert-row">${nextO}</div><div class="alert-meta"><span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:${prov.color};display:inline-block;"></span>${prov.nombre.toUpperCase()}</span><span>·</span><span>PLAZO ENTREGA: ${prov.dias} DÍAS</span><span>·</span><span>STOCK BAJO PERO CUBRE LA PROGRAMACIÓN ACTUAL</span></div>`;
+    } else if(!prov){
+      deadlineHtml=`<div class="alert-meta">⚠️ SIN PROVEEDOR ASIGNADO</div>`;
+    }
+    list.innerHTML+=`<div class="alert-box ${isOut?'alert-danger':'alert-warn'}">
+      <div class="alert-title"><i class="ti ti-${isOut?'alert-circle':'alert-triangle'}"></i>${isOut?'COMPRA URGENTE':'STOCK BAJO'} — ${d.nombre.toUpperCase()}</div>
+      <div class="alert-body">STOCK ACTUAL: ${Math.round(st).toLocaleString()} KG &nbsp;·&nbsp; CONSUMO PREVISTO: ${Math.round(d.kg).toLocaleString()} KG &nbsp;·&nbsp; RESTANTE: <strong>${Math.round(rest).toLocaleString()} KG</strong></div>
+      ${deadlineHtml}
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid currentColor;border-top-color:rgba(0,0,0,0.1);">
+        <button class="btn btn-dark" style="font-size:11px;padding:5px 12px;" onclick="openNuevoPedidoForMat('${id}')"><i class="ti ti-shopping-cart-plus"></i> Crear pedido</button>
+      </div></div>`;
+  }
+}
+
+
+function renderProvGrid(){
+  const q=(document.getElementById('prov-search')?.value||'').toLowerCase();
+  const grid=document.getElementById('prov-grid');grid.innerHTML='';
+  const allI=allIng();
+  const filtered=q?proveedores.filter(p=>p.nombre.toLowerCase().includes(q)||p.materias.some(m=>allI[m]&&allI[m].toLowerCase().includes(q))):proveedores;
+  if(!filtered.length){grid.innerHTML=`<div style="font-size:11px;color:var(--text3);padding:8px 0;">Sin resultados para "${q}"</div>`;return;}
+  for(const p of filtered){
+    const card=document.createElement('div');card.className=`prov-card${activePID===p.id?' active':''}`;
+    const mats=p.materias.map(m=>allI[m]||m).slice(0,4);
+    const more=p.materias.length-4;
+    card.innerHTML=`
+      <div class="prov-band" style="background:${p.color}"></div>
+      <div class="prov-body">
+        <div class="prov-name">${p.nombre.toUpperCase()}</div>
+        <div class="prov-dias-row"><div class="prov-dias-num">${p.dias}</div><div class="prov-dias-label">DÍAS DE<br>SUMINISTRO</div></div>
+        <div class="prov-mats-hdr">${p.materias.length} MATERIAS ASIGNADAS</div>
+        <div class="prov-mat-chips">${mats.map(n=>`<span class="pmat">${n.toUpperCase()}</span>`).join('')}${more>0?`<span class="pmat">+${more}</span>`:''}</div>
+      </div>
+    `;
+    card.onclick=()=>{activePID=p.id;renderProvGrid();renderProvEdit();};
+    grid.appendChild(card);
+  }
+}
+
+function renderProvEdit(){
+  const wrap=document.getElementById('prov-edit-wrap');
+  if(!activePID){wrap.innerHTML='';return;}
+  const p=proveedores.find(x=>x.id===activePID);if(!p){wrap.innerHTML='';return;}
+  const allI=allIng();
+  wrap.innerHTML=`
+    <div class="prov-edit">
+      <div class="prov-edit-hdr" style="background:${p.color}18;">
+        <div style="width:14px;height:14px;border-radius:50%;background:${p.color};flex-shrink:0;"></div>
+        <span style="font-size:12px;font-weight:600;flex:1;letter-spacing:0.04em;">${p.nombre.toUpperCase()}</span>
+        <button class="btn btn-danger" onclick="deleteProv('${p.id}')"><i class="ti ti-trash"></i> Eliminar</button>
+      </div>
+      <div class="prov-edit-body">
+        <div class="prov-edit-col">
+          <div>
+            <label class="field-label">Nombre del proveedor</label>
+            <input class="field-input" id="pd-name" type="text" value="${p.nombre.toUpperCase()}">
+          </div>
+          <div style="display:flex;gap:16px;align-items:flex-start;">
+            <div>
+              <label class="field-label">Días de suministro</label>
+              <input class="field-input-sm" id="pd-days" type="number" min="1" max="365" value="${p.dias}">
+            </div>
+            <div>
+              <label class="field-label">Color</label>
+              <div class="color-picker" id="pd-colors"></div>
+            </div>
+          </div>
+        </div>
+        <div class="prov-edit-col">
+          <div>
+            <label class="field-label">Materias primas asignadas</label>
+            <div class="mat-wrap" id="pd-mats">
+              ${Object.entries(allI).map(([id,nom])=>{
+                const checked=p.materias.includes(id);
+                const other=!checked?proveedores.find(x=>x.id!==p.id&&x.materias.includes(id)):null;
+                return `<div class="mat-row">
+                  <input type="checkbox" id="mc-${id}" ${checked?'checked':''} onchange="toggleMat('${id}')">
+                  <label for="mc-${id}">${nom.toUpperCase()}</label>
+                  ${other?`<span class="mat-other" style="background:${other.color}20;color:${other.color};">${other.nombre.toUpperCase()}</span>`:''}
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="prov-edit-footer">
+        <button class="btn btn-dark" onclick="saveProvEdit()"><i class="ti ti-device-floppy"></i> Guardar cambios</button>
+        <span class="saved-msg" id="pd-saved"><i class="ti ti-circle-check"></i> GUARDADO</span>
+      </div>
+    </div>
+  `;
+  renderColorPicker('pd-colors',p.color,col=>{p.color=col;renderProvGrid();renderProvEdit();renderStock();});
+}
+
+function renderColorPicker(cid,selected,onSelect){
+  const c=document.getElementById(cid);if(!c)return;c.innerHTML='';
+  for(const col of PROV_COLORS){const s=document.createElement('div');s.className=`csw${col===selected?' sel':''}`;s.style.background=col;s.onclick=()=>onSelect(col);c.appendChild(s);}
+}
+function toggleMat(mid){
+  const p=proveedores.find(x=>x.id===activePID);if(!p)return;
+  const chk=document.getElementById(`mc-${mid}`);if(!chk)return;
+  if(chk.checked){for(const op of proveedores)if(op.id!==p.id)op.materias=op.materias.filter(m=>m!==mid);if(!p.materias.includes(mid))p.materias.push(mid);}
+  else p.materias=p.materias.filter(m=>m!==mid);
+  saveState();
+}
+function saveProvEdit(){
+  const p=proveedores.find(x=>x.id===activePID);if(!p)return;
+  const n=document.getElementById('pd-name').value.trim();if(n)p.nombre=n;
+  const d=parseInt(document.getElementById('pd-days').value);if(d>0)p.dias=d;
+  saveState();flash('pd-saved');renderProvGrid();renderStock();
+}
+function deleteProv(id){
+  if(!confirm('¿ELIMINAR ESTE PROVEEDOR?'))return;
+  proveedores=proveedores.filter(p=>p.id!==id);
+  if(activePID===id){activePID=null;document.getElementById('prov-edit-wrap').innerHTML='';}
+  saveState();renderProvGrid();renderStock();
+}
+function openNewProv(){
+  tmpColor=PROV_COLORS[0];
+  document.getElementById('mp-name').value='';document.getElementById('mp-days').value=7;
+  renderColorPicker('mp-colors',tmpColor,c=>{tmpColor=c;renderColorPicker('mp-colors',tmpColor,c2=>{tmpColor=c2;});});
+  document.getElementById('modal-prov').classList.add('open');
+}
+function saveProv(){
+  const nom=document.getElementById('mp-name').value.trim();const dias=parseInt(document.getElementById('mp-days').value)||7;
+  if(!nom){alert('INTRODUCE UN NOMBRE.');return;}
+  proveedores.push({id:'prov'+Date.now(),nombre:nom,dias,color:tmpColor,materias:[]});
+  saveState();closeModal('modal-prov');renderProvGrid();
+}
+
+function renderRecetaGrid(){
+  const g=document.getElementById('receta-grid');g.innerHTML='';
+  for(const r of RECETAS){const c=document.createElement('div');c.className=`rc rc-${r.color}${activeRID===r.id?' active':''}`;c.innerHTML=`<div class="rc-name">${r.nombre.toUpperCase()}</div><div class="rc-count">${r.ingredientes.length} ING.</div>`;c.onclick=()=>{activeRID=r.id;renderRecetaGrid();renderEditor();};g.appendChild(c);}
+}
+function renderEditor(){
+  const ed=document.getElementById('receta-editor');
+  if(!activeRID){ed.innerHTML='<p style="font-size:11px;color:var(--text3)">Selecciona una receta para editar.</p>';return;}
+  const r=RECETAS.find(x=>x.id===activeRID);if(!r){ed.innerHTML='';return;}
+  ed.innerHTML=`<div class="editor-wrap">
+    <div class="editor-head eh-${r.color}"><div class="cdot cdot-${r.color}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button></div>
+    <div class="sim-box">
+      <div class="sim-title"><i class="ti ti-calculator"></i> KG DE LA MASA (tamaño de lote)</div>
+      <div class="sim-row">
+        <input id="sim-pm" type="number" step="0.001" min="0.001" value="${r.pesoMasa}" oninput="updMasa()">
+        <button class="gsm" onclick="savePM()"><i class="ti ti-check"></i> Guardar</button>
+      </div>
+      <div class="sim-note" id="sim-note"></div>
+    </div>
+    <table class="ing-table"><thead><tr><th style="width:40%">Ingrediente</th><th style="width:18%;text-align:right">KG/MASA actual</th><th style="width:20%;text-align:right">Nuevo valor</th><th style="width:22%;text-align:right">CONSUMO / TURNO</th></tr></thead><tbody>
+    ${r.ingredientes.map((i,n)=>`<tr><td>${i.nombre.toUpperCase()}</td><td style="text-align:right;color:var(--text3);font-family:var(--mono)">${i.kgMasa}</td><td style="text-align:right"><input class="ing-inp" id="ii${n}" type="number" step="0.001" min="0" value="${i.kgMasa}" oninput="markIng(${n})"></td><td style="text-align:right;font-family:var(--mono);font-weight:600" id="sc${n}">—</td></tr>`).join('')}
+    </tbody></table>
+    <div class="save-bar"><button class="btn btn-dark" onclick="saveKg()"><i class="ti ti-device-floppy"></i> Guardar KG/MASA</button><button class="btn btn-outline" onclick="renderEditor()"><i class="ti ti-refresh"></i> Restablecer</button><span class="saved-msg" id="sm"><i class="ti ti-circle-check"></i> GUARDADO</span></div>
+  </div>`;
+  updMasa();
+}
+// Único dato editable de cálculo: kg de la masa (tamaño del lote) de la receta.
+// 1 turno = HORAS × velocidad ÷ kg de la masa = nº de masas. En el editor se muestra
+// a la velocidad por defecto; la velocidad real de cada producción se elige al programar.
+function updMasa(){
+  const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;
+  const el=document.getElementById('sim-pm');if(!el)return;
+  const pm=Math.max(0.001,parseFloat(el.value)||r.pesoMasa);
+  const masas=KPT/pm;   // masas por turno a velocidad por defecto
+  document.getElementById('sim-note').innerHTML=
+    `1 turno a ${VEL_DEF} KG/H = ${HORAS} H × ${VEL_DEF} = ${KPT.toLocaleString()} KG ÷ ${pm.toLocaleString()} = <strong>${masas.toFixed(2)} MASAS</strong><br><span style="color:var(--text3)">La velocidad real (kg/h) se ajusta al programar en el calendario.</span>`;
+  for(let n=0;n<r.ingredientes.length;n++){
+    const cell=document.getElementById('sc'+n);if(!cell)continue;
+    const kgMasa=parseFloat(document.getElementById('ii'+n).value)||r.ingredientes[n].kgMasa;
+    cell.textContent=(kgMasa*masas).toLocaleString(undefined,{maximumFractionDigits:1})+' kg';
+  }
+}
+function savePM(){
+  const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;
+  const v=parseFloat(document.getElementById('sim-pm').value);
+  if(!isNaN(v)&&v>0)r.pesoMasa=v;   // guarda los kg de la masa de esta receta
+  saveState();flash('sm');renderCal();renderStock();
+}
+function saveRN(){const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;const v=document.getElementById('rn').value.trim();if(!v)return;r.nombre=v;saveState();renderRecetaGrid();renderCal();flash('sm');}
+function markIng(n){const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;const inp=document.getElementById(`ii${n}`);inp.classList.toggle('changed',parseFloat(inp.value)!==r.ingredientes[n].kgMasa);updMasa();}
+function saveKg(){const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;for(let n=0;n<r.ingredientes.length;n++){const inp=document.getElementById(`ii${n}`);const v=parseFloat(inp.value);if(!isNaN(v)&&v>=0){r.ingredientes[n].kgMasa=v;inp.classList.remove('changed');}}saveState();flash('sm');renderRecetaGrid();renderStock();}
+function flash(id){const m=document.getElementById(id);if(m){m.classList.add('show');setTimeout(()=>m.classList.remove('show'),2000);}}
+
+function normStr(s){return s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,' ').replace(/\s+/g,' ').trim();}
+
+function matchRow(nomExcel){
+  const nom=String(nomExcel||'').trim();
+  const nomNorm=normStr(nom);
+
+  // 1) Numeric code match: extract [XXXX] and look up in XMAP
+  const m=nom.match(/^\[([^\]]+)\]/);
+  if(m){
+    const code=m[1].trim();
+    if(XMAP[code])return{id:XMAP[code].id,nombre:XMAP[code].nombre};
+  }
+
+  // 2) Exact text-key match via XMAP_EXACT (normalized comparison)
+  for(const [,v] of Object.entries(XMAP_EXACT)){
+    if(normStr(v.excelNombre)===nomNorm)return{id:v.id,nombre:v.excelNombre};
+  }
+
+  return null; // no match — do not guess
+}
+
+function handleImport(ev){
+  const f=ev.target.files[0];if(!f)return;ev.target.value='';
+  const rd=new FileReader();rd.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){alert('EL ARCHIVO ESTÁ VACÍO.');return;}
+
+      // Detect columns (tolerante al formato de export de stock)
+      const keys=Object.keys(rows[0]);
+      const num=v=>{if(typeof v==='number')return v;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?0:n;};
+      // Nombre del producto: "Producto" o "Nombre"; nunca una columna de cantidad
+      const nc=keys.find(k=>/producto/i.test(k))||keys.find(k=>/nombre/i.test(k)&&!/cantidad/i.test(k))||keys.find(k=>!/cantidad|reservad|valor|fecha|lote|paquete|propietario|ubicaci|unidad/i.test(k))||keys[0];
+      // Cantidad: "disponible" si existe; si no, "inventariada"/"cantidad"/"real"
+      const qInv=keys.find(k=>/disponible/i.test(k))||keys.find(k=>/inventariad/i.test(k))||keys.find(k=>/cantidad/i.test(k)&&!/reservad/i.test(k))||keys.find(k=>/qty|real/i.test(k));
+      const uc=keys.find(k=>/ubicaci/i.test(k));     // para excluir NO CONFORME
+      if(!nc||!qInv){alert('NO SE ENCONTRARON LAS COLUMNAS ESPERADAS.\nNecesario: columna de producto y de cantidad.');return;}
+
+      // Agregar por materia: sumar la cantidad inventariada de todos los lotes/ubicaciones
+      // del mismo producto (NO se resta reservado, no reservamos materia prima),
+      // excluir ubicaciones NO CONFORME, y quedarnos SOLO con las materias de las recetas.
+      const agg={};       // id receta -> {nombre, qty, filas}
+      let ignoradas=0;    // filas que no son materia de receta
+      let excluidasNC=0;  // filas excluidas por NO CONFORME
+      for(const row of rows){
+        const nom=String(row[nc]||'').trim();
+        if(!nom)continue;
+        const ubic=uc?String(row[uc]||'').toUpperCase():'';
+        const match=matchRow(nom);
+        if(!match){ignoradas++;continue;}                       // no es de receta -> fuera
+        if(/NO\s*CONFORME/.test(ubic)){excluidasNC++;continue;} // no apto -> fuera
+        const disp=num(row[qInv]);                              // cantidad inventariada (sin restar nada)
+        if(!agg[match.id])agg[match.id]={id:match.id,nombre:match.nombre,qty:0,filas:0};
+        agg[match.id].qty+=disp;
+        agg[match.id].filas++;
+      }
+      const matched=Object.values(agg).map(a=>({nom:a.nombre,qty:Math.max(0,a.qty),filas:a.filas,match:{id:a.id,nombre:a.nombre}}));
+      pending={matched,ignoradas,excluidasNC,totalFilas:rows.length};
+
+      // Build comparison table
+      if(!matched.length){alert('NO SE RECONOCIÓ NINGUNA MATERIA DE TUS RECETAS EN ESTE ARCHIVO.');return;}
+      matched.sort((a,b)=>a.match.nombre.localeCompare(b.match.nombre));
+      document.getElementById('imp-summary').innerHTML=
+        `<strong>${f.name}</strong> &nbsp;·&nbsp; ${pending.totalFilas} LÍNEAS EN EL EXCEL &nbsp;·&nbsp;
+         <span style="color:var(--ok-tx);font-weight:600">${matched.length} MATERIAS DE RECETA ACTUALIZADAS</span> &nbsp;·&nbsp;
+         <span style="color:var(--text3)">${pending.ignoradas} LÍNEAS IGNORADAS (NO SON DE RECETA)${pending.excluidasNC?` · ${pending.excluidasNC} EXCLUIDAS POR NO CONFORME`:''}</span>`;
+
+      const il=document.getElementById('imp-list');il.innerHTML='';
+
+      // Show matched with before/after comparison
+      const hdr=document.createElement('div');
+      hdr.style.cssText='font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.07em;display:grid;grid-template-columns:1fr 80px 80px 60px;gap:6px;padding:6px 8px;border-bottom:1.5px solid var(--border);margin-top:8px;';
+      hdr.innerHTML='<span>MATERIA PRIMA</span><span style="text-align:right">STOCK ACTUAL</span><span style="text-align:right">STOCK NUEVO</span><span style="text-align:right">DIFERENCIA</span>';
+      il.appendChild(hdr);
+      for(const p of matched){
+        const actual=stock[p.match.id]||0;
+        const diff=p.qty-actual;
+        const diffColor=diff>0?'var(--ok-tx)':diff<0?'var(--danger-tx)':'var(--text3)';
+        const diffStr=diff>0?`+${Math.round(diff).toLocaleString()}`:Math.round(diff).toLocaleString();
+        const lotes=p.filas>1?` <span style="color:var(--text3);font-weight:400">(${p.filas} lotes)</span>`:'';
+        const div=document.createElement('div');
+        div.className='import-row';
+        div.style.cssText='display:grid;grid-template-columns:1fr 80px 80px 60px;gap:6px;align-items:center;';
+        div.innerHTML=`
+          <span class="import-name" style="font-size:10px;">${p.match.nombre}${lotes}</span>
+          <span class="import-qty" style="text-align:right;font-size:10px;">${Math.round(actual).toLocaleString()} KG</span>
+          <span class="import-qty" style="text-align:right;font-size:10px;font-weight:600;">${Math.round(p.qty).toLocaleString()} KG</span>
+          <span style="text-align:right;font-size:10px;font-weight:600;color:${diffColor}">${diffStr}</span>`;
+        il.appendChild(div);
+      }
+
+      document.getElementById('modal-import').classList.add('open');
+    }catch(err){alert('ERROR AL LEER EL ARCHIVO: '+err.message);}
+  };
+  rd.readAsArrayBuffer(f);
+}
+
+function applyImport(){
+  if(!pending)return;
+  let updated=0;
+  for(const p of pending.matched){
+    stock[p.match.id]=p.qty;
+    updated++;
+  }
+  stockDate=new Date().toLocaleDateString('es-ES');
+  saveState();
+  closeModal('modal-import');
+  const b=document.getElementById('stock-badge');
+  b.className='stock-badge ok';
+  b.innerHTML=`<i class="ti ti-circle-check"></i> STOCK IMPORTADO EL ${stockDate} · ${updated} MATERIAS ACTUALIZADAS`;
+  renderStock();
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function closeBg(id,e){if(e.target===document.getElementById(id))closeModal(id);}
+function changeMonth(d){vM+=d;if(vM>11){vM=0;vY++;}if(vM<0){vM=11;vY--;}renderCal();renderStock();}
+function showTab(id,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(`sec-${id}`).classList.add('active');
+  el.classList.add('active');
+  const titles={calendario:'Calendario de programación',stock:'Stock y consumo previsto',alertas:'Alertas de compra',proveedores:'Gestión de proveedores',recetas:'Editor de recetas',pedidos:'Pedidos a proveedores'};
+  document.getElementById('topbar-title').textContent=titles[id]||'';
+  document.getElementById('btn-import').style.display=id==='stock'?'inline-flex':'none';
+  document.getElementById('btn-nuevo-pedido').style.display=id==='pedidos'?'inline-flex':'none';
+  if(id==='stock'||id==='alertas')renderStock();
+  if(id==='proveedores'){renderProvGrid();renderProvEdit();}
+  if(id==='recetas'){renderRecetaGrid();renderEditor();}
+  if(id==='pedidos')renderPedidos();
+}
+
+// ── PEDIDOS ──────────────────────────────────────────────────────────────────
+let pedidoFiltro='todos'; // 'todos' | 'pendientes' | 'alerta'
+
+function renderPedidos(){
+  const list=document.getElementById('pedidos-list');if(!list)return;
+  const allI=allIng();
+  const today=new Date();today.setHours(0,0,0,0);
+  const sorted=[...pedidos].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+
+  // Compute stats
+  let pendientes=0,enAlerta=0,vencidos=0;
+  for(const p of pedidos){
+    const prov=proveedores.find(x=>x.id===p.provId);
+    const recepcion=new Date(p.fecha+'T12:00:00');if(prov)recepcion.setDate(recepcion.getDate()+prov.dias);
+    const daysToRec=Math.floor((recepcion-today)/86400000);
+    if(daysToRec<0)vencidos++;
+    else{pendientes++;if(daysToRec<=5)enAlerta++;}
+  }
+
+  // Stats as filter buttons
+  const statsEl=document.getElementById('pedidos-stats');
+  if(statsEl){
+    const alertaClass=vencidos>0?'danger':enAlerta>0?'warn':'';
+    const alertaVal=vencidos>0?vencidos:enAlerta;
+    const alertaLbl=vencidos>0?'VENCIDOS':'PRÓXIMOS 5 DÍAS';
+    statsEl.innerHTML=`
+      <div class="pedido-stat${pedidoFiltro==='todos'?' pf-active':''}" onclick="setPedidoFiltro('todos')" style="cursor:pointer;">
+        <div class="pedido-stat-val">${pedidos.length}</div>
+        <div class="pedido-stat-lbl">TOTAL PEDIDOS</div>
+      </div>
+      <div class="pedido-stat${pedidoFiltro==='pendientes'?' pf-active':''}" onclick="setPedidoFiltro('pendientes')" style="cursor:pointer;">
+        <div class="pedido-stat-val">${pendientes}</div>
+        <div class="pedido-stat-lbl">PENDIENTES DE RECIBIR</div>
+      </div>
+      <div class="pedido-stat ${alertaClass}${pedidoFiltro==='alerta'?' pf-active':''}" onclick="setPedidoFiltro('alerta')" style="cursor:pointer;">
+        <div class="pedido-stat-val">${alertaVal}</div>
+        <div class="pedido-stat-lbl">${alertaLbl}</div>
+      </div>`;
+  }
+
+  // Nav badge
+  const nb=document.getElementById('pedidos-badge');
+  if(nb){
+    const badgeVal=vencidos>0?vencidos:enAlerta>0?enAlerta:0;
+    nb.textContent=badgeVal;
+    nb.style.display=badgeVal>0?'inline':'none';
+    nb.className='nav-badge-pedidos '+(vencidos>0?'nb-danger':'nb-warn');
+  }
+
+  if(!sorted.length){list.innerHTML='<div class="pedidos-empty">SIN PEDIDOS REGISTRADOS. USA "NUEVO PEDIDO" PARA AÑADIR UNO.</div>';return;}
+
+  // Apply filter
+  const filtered=sorted.filter(p=>{
+    if(pedidoFiltro==='todos')return true;
+    const prov=proveedores.find(x=>x.id===p.provId);
+    const recepcion=new Date(p.fecha+'T12:00:00');if(prov)recepcion.setDate(recepcion.getDate()+prov.dias);
+    const daysToRec=Math.floor((recepcion-today)/86400000);
+    if(pedidoFiltro==='pendientes')return daysToRec>=0;
+    if(pedidoFiltro==='alerta')return daysToRec<0||(daysToRec<=5);
+    return true;
+  });
+
+  list.innerHTML='';
+  if(!filtered.length){list.innerHTML='<div class="pedidos-empty">NO HAY PEDIDOS EN ESTA CATEGORÍA.</div>';return;}
+
+  for(const p of filtered){
+    const prov=proveedores.find(x=>x.id===p.provId);
+    const matNom=allI[p.matId]||p.matId;
+    const recepcion=new Date(p.fecha+'T12:00:00');if(prov)recepcion.setDate(recepcion.getDate()+prov.dias);
+    const recepcionStr=fmtShort(recepcion);
+    const pedidoStr=fmtShort(new Date(p.fecha+'T12:00:00'));
+    const daysToRec=Math.floor((recepcion-today)/86400000);
+    const isVencido=daysToRec<0;
+    const isProximo=!isVencido&&daysToRec<=5;
+    const rowBorder=isVencido?'border-color:var(--danger-bd);':(isProximo?'border-color:var(--warn-bd);':'');
+    const row=document.createElement('div');row.className='pedido-row';row.setAttribute('style',rowBorder);
+    row.innerHTML=`
+      <div class="pedido-dot" style="background:${prov?prov.color:'#999'}"></div>
+      <div class="pedido-info">
+        <div class="pedido-nombre">${prov?prov.nombre.toUpperCase():'—'} — ${matNom.toUpperCase()}</div>
+        <div class="pedido-meta">${Number(p.qty).toLocaleString()} KG${p.notas?' · '+p.notas.toUpperCase():''} · PEDIDO: ${pedidoStr}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div class="pedido-fecha" style="font-size:12px;color:${isVencido?'var(--danger-tx)':isProximo?'var(--warn-tx)':'var(--text)'}">
+          <i class="ti ti-package" style="font-size:11px;vertical-align:middle;margin-right:2px;"></i>${recepcionStr}
+        </div>
+        <div style="font-size:9px;margin-top:2px;font-family:var(--mono);color:${isVencido?'var(--danger-tx)':isProximo?'var(--warn-tx)':'var(--text3)'}">
+          ${isVencido?`VENCIDO HACE ${Math.abs(daysToRec)} DÍA${Math.abs(daysToRec)!==1?'S':''}`:isProximo?`EN ${daysToRec} DÍA${daysToRec!==1?'S':''}`:'RECEPCIÓN EST.'}
+        </div>
+      </div>
+      <button class="btn-del-sm" style="border-color:var(--border2);color:var(--text2);" onclick="editPedido('${p.id}')"><i class="ti ti-pencil"></i></button>
+      <button class="btn-del-sm" onclick="deletePedido('${p.id}')"><i class="ti ti-trash"></i></button>
+    `;
+    list.appendChild(row);
+  }
+}
+
+function setPedidoFiltro(f){pedidoFiltro=f;renderPedidos();}
+
+function openNuevoPedido(){
+  document.getElementById('np-edit-id').value='';
+  document.getElementById('np-modal-title').textContent='Nuevo pedido';
+  document.getElementById('np-modal-sub').textContent='Registra un pedido pendiente de enviar al proveedor';
+  document.getElementById('np-save-btn').innerHTML='<i class="ti ti-device-floppy"></i> Guardar pedido';
+  const sel=document.getElementById('np-prov');
+  sel.innerHTML=proveedores.map(p=>`<option value="${p.id}">${p.nombre.toUpperCase()}</option>`).join('');
+  updNpMats();
+  updNpFechaHint();
+  document.getElementById('np-qty').value='';
+  document.getElementById('np-notas').value='';
+  document.getElementById('modal-pedido').classList.add('open');
+}
+
+function editPedido(id){
+  const p=pedidos.find(x=>x.id===id);if(!p)return;
+  const prov=proveedores.find(x=>x.id===p.provId);
+  const dias=prov?prov.dias:0;
+  // Compute reception date from stored order date
+  const recepcion=new Date(p.fecha+'T12:00:00');recepcion.setDate(recepcion.getDate()+dias);
+
+  document.getElementById('np-edit-id').value=id;
+  document.getElementById('np-modal-title').textContent='Editar pedido';
+  document.getElementById('np-modal-sub').textContent='Modifica los datos del pedido';
+  document.getElementById('np-save-btn').innerHTML='<i class="ti ti-device-floppy"></i> Guardar cambios';
+
+  const sel=document.getElementById('np-prov');
+  sel.innerHTML=proveedores.map(pr=>`<option value="${pr.id}">${pr.nombre.toUpperCase()}</option>`).join('');
+  sel.value=p.provId;
+  updNpMats();
+  // Pre-select mat after options are populated
+  setTimeout(()=>{
+    const ms=document.getElementById('np-mat');
+    for(const opt of ms.options){if(opt.value===p.matId){ms.value=p.matId;break;}}
+  },50);
+  document.getElementById('np-qty').value=p.qty;
+  document.getElementById('np-fecha').value=recepcion.toISOString().split('T')[0];
+  document.getElementById('np-notas').value=p.notas||'';
+  updNpHint();
+  document.getElementById('modal-pedido').classList.add('open');
+}
+
+function updNpFechaHint(){
+  const pid=document.getElementById('np-prov').value;
+  const prov=proveedores.find(x=>x.id===pid);
+  const dias=prov?prov.dias:0;
+  // Default reception = today + supplier days
+  const recepcion=new Date();recepcion.setDate(recepcion.getDate()+dias);
+  document.getElementById('np-fecha').value=recepcion.toISOString().split('T')[0];
+  updNpHint();
+}
+
+function updNpHint(){
+  const pid=document.getElementById('np-prov').value;
+  const prov=proveedores.find(x=>x.id===pid);
+  const dias=prov?prov.dias:0;
+  const fechaRec=document.getElementById('np-fecha').value;
+  if(!fechaRec){document.getElementById('np-fecha-hint').textContent='';return;}
+  const pedidoDate=new Date(fechaRec+'T12:00:00');
+  pedidoDate.setDate(pedidoDate.getDate()-dias);
+  document.getElementById('np-fecha-hint').textContent=`PEDIDO A ENVIAR: ${fmtShort(pedidoDate)} (${dias} DÍAS DE PLAZO)`;
+}
+
+function openNuevoPedidoForMat(matId){
+  openNuevoPedido();
+  const prov=getProvForMat(matId);
+  if(prov){document.getElementById('np-prov').value=prov.id;updNpMats();}
+  setTimeout(()=>{
+    const sel=document.getElementById('np-mat');
+    for(const opt of sel.options){if(opt.value===matId){sel.value=matId;break;}}
+    const allI=allIng();
+    const matNom=allI[matId]||matId;
+    document.getElementById('np-modal-sub').textContent=`Pedido para ${matNom.toUpperCase()} — generado desde alertas`;
+  },50);
+}
+
+function updNpMats(){
+  const pid=document.getElementById('np-prov').value;
+  const prov=proveedores.find(x=>x.id===pid);
+  const allI=allIng();
+  const mats=prov&&prov.materias.length?prov.materias:Object.keys(allI);
+  document.getElementById('np-mat').innerHTML=mats.map(m=>`<option value="${m}">${(allI[m]||m).toUpperCase()}</option>`).join('');
+  updNpFechaHint();
+}
+
+function saveNuevoPedido(){
+  const editId=document.getElementById('np-edit-id').value;
+  const provId=document.getElementById('np-prov').value;
+  const matId=document.getElementById('np-mat').value;
+  const qty=parseFloat(document.getElementById('np-qty').value);
+  const fechaRec=document.getElementById('np-fecha').value;
+  const notas=document.getElementById('np-notas').value.trim();
+  if(!provId||!matId||isNaN(qty)||qty<=0||!fechaRec){alert('COMPLETA TODOS LOS CAMPOS OBLIGATORIOS.');return;}
+  const prov=proveedores.find(x=>x.id===provId);
+  const dias=prov?prov.dias:0;
+  const pedidoDate=new Date(fechaRec+'T12:00:00');pedidoDate.setDate(pedidoDate.getDate()-dias);
+  const fecha=pedidoDate.toISOString().split('T')[0];
+  if(editId){
+    const p=pedidos.find(x=>x.id===editId);
+    if(p){p.provId=provId;p.matId=matId;p.qty=qty;p.fecha=fecha;p.notas=notas;}
+  } else {
+    pedidos.push({id:'ped'+Date.now(),provId,matId,qty,fecha,notas});
+  }
+  closeModal('modal-pedido');
+  saveState();
+  renderCal();renderPedidos();renderStock();
+}
+
+function deletePedido(id){
+  if(!confirm('¿ELIMINAR ESTE PEDIDO?'))return;
+  pedidos=pedidos.filter(p=>p.id!==id);
+  saveState();
+  renderPedidos();renderCal();renderStock();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Carga el estado compartido desde el servidor (o respaldo local) y pinta todo.
+loadState().then(()=>{renderCal();renderStock();renderPedidos();}).catch(()=>{renderCal();renderStock();renderPedidos();});
+</script>
+</body>
+</html>

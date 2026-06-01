@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendario de Recepciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.30.0/iconfont/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#f0f3f9;--bg2:#e6ebf4;--bg3:#dae1ee;
+  --border:#c2cadb;--border2:#a6b1c8;
+  --text:#171a21;--text2:#5a6273;--text3:#9098a8;
+  --accent:#3D5AFE;--accent2:#5C77FF;--accent-bg:#E8ECFF;
+  --danger-bg:#FCEBEB;--danger-bd:#E24B4A;--danger-tx:#501313;
+  --warn-bg:#FAEEDA;--warn-bd:#BA7517;--warn-tx:#412402;
+  --ok-bg:#EAF3DE;--ok-tx:#27500A;--ok-bd:#639922;
+  --success-bg:#EAF3DE;--success-bd:#1a7a3a;--success-tx:#173404;
+  --blue-bg:#E6F1FB;--blue-bd:#185FA5;--blue-tx:#0C447C;
+  --blue-bg2:#dbeeff;--blue-bg3:#c8e4ff;
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --r:6px;--rl:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;text-transform:uppercase;}
+
+/* LAYOUT */
+.shell{display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:linear-gradient(90deg,#1e2a4a 0%,#202649 55%,#2a2356 100%);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:52px;flex-shrink:0;}
+.topbar-left{display:flex;align-items:center;gap:16px;}
+.logo{font-size:11px;font-weight:600;letter-spacing:0.1em;line-height:1.4;}
+.logo span{display:block;font-size:9px;opacity:0.45;font-weight:400;margin-top:2px;}
+.topbar-nav{display:flex;gap:4px;}
+.tnav{background:none;border:none;color:rgba(255,255,255,0.5);font-family:var(--font);font-size:10px;font-weight:600;letter-spacing:0.06em;padding:6px 12px;border-radius:var(--r);cursor:pointer;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.tnav:hover{color:#fff;background:rgba(255,255,255,0.08);}
+.tnav.active{color:#fff;background:rgba(92,119,255,0.28);box-shadow:inset 0 0 0 1px rgba(92,119,255,0.4);}
+.tnav i{font-size:14px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.sync-badge{font-size:9px;font-weight:600;letter-spacing:0.06em;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;}
+.sync-ok{background:var(--ok-bg);color:var(--ok-tx);}
+.sync-empty{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);}
+.btn{border:1.5px solid;border-radius:var(--r);padding:6px 12px;font-size:10px;font-weight:600;letter-spacing:0.05em;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-transform:uppercase;}
+.btn-light{background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);}
+.btn-light:hover{background:rgba(255,255,255,0.18);}
+.btn-green{background:#1a7a3a;color:#fff;border-color:#155e2d;}
+.btn-green:hover{background:#155e2d;}
+.content{flex:1;padding:24px;max-width:1200px;margin:0 auto;width:100%;background:linear-gradient(180deg,#f0f3f9 0%,#eaeff7 100%);}
+
+/* STATS */
+.stats-row{display:flex;gap:10px;margin-bottom:20px;}
+.stat-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--rl);padding:12px 16px;flex:1;display:flex;flex-direction:column;gap:3px;}
+.stat-label{font-size:9px;color:var(--text3);letter-spacing:0.08em;}
+.stat-value{font-size:22px;font-weight:700;line-height:1;}
+.stat-sub{font-size:9px;color:var(--text3);}
+.stat-card.danger{background:var(--danger-bg);border-color:var(--danger-bd);}
+.stat-card.danger .stat-value,.stat-card.danger .stat-label,.stat-card.danger .stat-sub{color:var(--danger-tx);}
+.stat-card.warn{background:var(--warn-bg);border-color:var(--warn-bd);}
+.stat-card.warn .stat-value,.stat-card.warn .stat-label,.stat-card.warn .stat-sub{color:var(--warn-tx);}
+.stat-card.ok{background:var(--ok-bg);border-color:var(--ok-bd);}
+.stat-card.ok .stat-value,.stat-card.ok .stat-label,.stat-card.ok .stat-sub{color:var(--ok-tx);}
+
+/* CAL NAVIGATION */
+.cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cal-nav{display:flex;align-items:center;gap:10px;}
+.cal-nb{background:none;border:1.5px solid var(--border);border-radius:var(--r);width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);font-size:17px;}
+.cal-nb:hover{background:var(--bg2);}
+.cal-month{font-size:16px;font-weight:600;letter-spacing:0.06em;}
+
+/* WEEK BLOCKS */
+.week-block{border:1.5px solid var(--border);border-top:none;overflow:hidden;}
+.week-block:first-child{border-top:1.5px solid var(--border);}
+.week-block.cw{border-color:var(--blue-bd);border-width:2px;}
+.week-block.cw+.week-block.cw{border-top:none;}
+.week-hdr{display:grid;grid-template-columns:100px repeat(7,1fr);background:var(--bg2);border-bottom:1px solid var(--border);}
+.week-hdr.cw-hdr{background:var(--blue-bg2);}
+.wh-label{padding:8px 12px;display:flex;flex-direction:column;justify-content:center;}
+.wh-week{font-size:14px;font-weight:700;}
+.wh-range{font-size:10px;color:var(--text3);margin-top:2px;}
+.cw-badge{display:inline-block;font-size:9px;font-weight:600;background:var(--blue-bd);color:#fff;border-radius:3px;padding:2px 5px;margin-top:3px;letter-spacing:0.05em;}
+.wh-day{padding:8px 6px;text-align:center;border-left:1px solid var(--border);}
+.wh-day-name{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.06em;}
+.wh-day-num{font-size:15px;font-weight:600;margin-top:2px;}
+.wh-day.today .wh-day-name{color:var(--blue-bd);}
+.wh-day.today .wh-day-num{color:var(--blue-bd);}
+.wh-day.has-recep{background:rgba(26,122,58,0.06);}
+.wh-day.past{opacity:0.45;}
+
+/* DAY CELLS ROW */
+.day-cells{display:grid;grid-template-columns:100px repeat(7,1fr);min-height:70px;}
+.week-label-cell{padding:10px 12px;background:var(--bg2);display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);}
+.week-label-cell.cw{background:var(--blue-bg2);}
+.day-cell{padding:8px 6px;border-left:1px solid var(--border);background:#fff;min-height:70px;vertical-align:top;}
+.day-cell.today{background:var(--blue-bg);}
+.day-cell.past{background:var(--bg);}
+.day-cell.weekend{background:var(--bg2);}
+.day-cell.today.weekend{background:var(--blue-bg2);}
+.day-cell.out-month{background:var(--bg3);opacity:0.4;}
+
+/* RECEPCION CARDS */
+.recep-card{border-radius:var(--r);padding:6px 8px;margin-bottom:4px;font-size:10px;font-weight:600;border-left:3px solid;cursor:pointer;transition:opacity 0.15s;}
+.recep-card:hover{opacity:0.85;}
+.recep-card.pendiente{background:#fff7ed;border-color:var(--warn-bd);color:var(--warn-tx);}
+.recep-card.recibido{background:var(--success-bg);border-color:#1a7a3a;color:#1a7a3a;}
+.recep-card.vencido{background:var(--danger-bg);border-color:var(--danger-bd);color:var(--danger-tx);}
+.rc-prov{font-size:9px;font-weight:600;letter-spacing:0.05em;opacity:0.75;margin-bottom:2px;}
+.rc-mat{font-size:10px;font-weight:700;line-height:1.3;}
+.rc-kg{font-size:9px;font-weight:600;font-family:var(--mono);margin-top:3px;}
+.rc-status{display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:700;margin-top:4px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;}
+.rc-status.pendiente{background:var(--warn-bd);color:#fff;}
+.rc-status.recibido{background:#1a7a3a;color:#fff;}
+.rc-status.vencido{background:var(--danger-bd);color:#fff;}
+
+/* EMPTY DAY */
+.day-empty{color:var(--text3);font-size:10px;text-align:center;padding-top:18px;opacity:0.4;}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:var(--rl);padding:24px;width:380px;max-width:95vw;}
+.modal-title{font-size:14px;font-weight:700;letter-spacing:0.04em;margin-bottom:4px;}
+.modal-sub{font-size:10px;color:var(--text2);margin-bottom:16px;}
+.modal-field{margin-bottom:12px;}
+.modal-field label{display:block;font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.07em;margin-bottom:5px;}
+.modal-field .val{font-size:12px;font-weight:600;padding:8px 10px;background:var(--bg2);border-radius:var(--r);}
+.status-btns{display:flex;gap:8px;margin-top:4px;}
+.status-btn{flex:1;padding:10px;border-radius:var(--r);border:2px solid var(--border);background:#fff;font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.05em;cursor:pointer;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:6px;}
+.status-btn.active-pendiente{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx);}
+.status-btn.active-recibido{border-color:#1a7a3a;background:var(--success-bg);color:#1a7a3a;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+.btn-outline{background:#fff;color:var(--text);border-color:var(--border2);}
+.btn-dark{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* LEGEND */
+.legend{display:flex;gap:14px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:600;letter-spacing:0.05em;color:var(--text2);}
+.leg-dot{width:10px;height:10px;border-radius:2px;}
+
+/* LIST VIEW */
+.list-table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--rl);overflow:hidden;border:1.5px solid var(--border);}
+.list-table th{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.07em;padding:10px 14px;border-bottom:1.5px solid var(--border);text-align:left;background:var(--bg2);}
+.list-table td{font-size:11px;padding:10px 14px;border-bottom:1px solid var(--border);}
+.list-table tr:last-child td{border-bottom:none;}
+.list-table tr:hover td{background:var(--bg);}
+.badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:3px;letter-spacing:0.05em;display:inline-block;}
+.badge-pendiente{background:var(--warn-bg);color:var(--warn-tx);}
+.badge-recibido{background:var(--success-bg);color:#1a7a3a;}
+.badge-vencido{background:var(--danger-bg);color:var(--danger-tx);}
+.prov-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
+.btn-sm{padding:4px 10px;font-size:9px;border-radius:var(--r);border:1.5px solid;cursor:pointer;font-family:var(--font);font-weight:600;letter-spacing:0.04em;text-transform:uppercase;display:inline-flex;align-items:center;gap:4px;}
+.btn-sm-green{background:var(--success-bg);color:#1a7a3a;border-color:#1a7a3a;}
+.btn-sm-green:hover{background:#1a7a3a;color:#fff;}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3);}
+.empty-state i{font-size:40px;opacity:0.3;display:block;margin-bottom:12px;}
+.empty-state p{font-size:11px;}
+
+/* COMENTARIOS */
+.comments-section{margin-top:16px;padding-top:16px;border-top:1.5px solid var(--border);}
+.comments-title{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.07em;margin-bottom:10px;}
+.comment-item{background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--border2);}
+.comment-item.read{border-left-color:var(--ok-bd);opacity:0.75;}
+.comment-item.unread{border-left-color:var(--warn-bd);}
+.comment-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.comment-text{font-size:11px;line-height:1.5;flex:1;}
+.comment-meta{font-size:9px;color:var(--text3);font-family:var(--mono);margin-top:4px;}
+.comment-read-btn{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:600;letter-spacing:0.05em;padding:4px 8px;border-radius:var(--r);border:1.5px solid;cursor:pointer;font-family:var(--font);text-transform:uppercase;white-space:nowrap;flex-shrink:0;}
+.comment-read-btn.unread-btn{background:#fff;border-color:var(--warn-bd);color:var(--warn-tx);}
+.comment-read-btn.read-btn{background:var(--ok-bg);border-color:var(--ok-bd);color:var(--ok-tx);}
+.comment-input-row{display:flex;gap:8px;margin-top:10px;}
+.comment-input{flex:1;font-family:var(--font);font-size:11px;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);background:#fff;text-transform:none;resize:none;color:var(--text);}
+.comment-input:focus{outline:none;border-color:var(--border2);}
+.btn-add-comment{background:var(--accent);color:#fff;border-color:var(--accent);padding:8px 12px;font-size:10px;}
+.btn-add-comment:hover{opacity:0.85;}
+.unread-dot{width:7px;height:7px;border-radius:50%;background:var(--warn-bd);display:inline-block;flex-shrink:0;box-shadow:0 0 0 2px #fff;}
+.rc-comment-badge{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--warn-bd);}
+.recep-card{position:relative;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo">Calendario de Recepciones<span>Control de Compras v1.0</span></div>
+      <div class="topbar-nav">
+        <button class="tnav active" id="tab-cal" onclick="switchView('cal')"><i class="ti ti-calendar-month"></i> Calendario</button>
+        <button class="tnav" id="tab-list" onclick="switchView('list')"><i class="ti ti-list"></i> Lista</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="sync-badge sync-empty" id="sync-badge"><i class="ti ti-refresh"></i> Sin datos</span>
+      <button class="btn btn-light" onclick="loadFromLS()"><i class="ti ti-refresh"></i> Actualizar</button>
+      <a href="index.html" class="btn btn-light" style="text-decoration:none;"><i class="ti ti-arrow-left"></i> Control de Compras</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="stats-row" id="stats-row"></div>
+
+    <!-- CALENDAR VIEW -->
+    <div id="view-cal">
+      <div class="cal-hdr">
+        <div class="cal-nav">
+          <button class="cal-nb" onclick="prevMonth()"><i class="ti ti-chevron-left"></i></button>
+          <span class="cal-month" id="cal-title"></span>
+          <button class="cal-nb" onclick="nextMonth()"><i class="ti ti-chevron-right"></i></button>
+        </div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:var(--warn-bd)"></div> Pendiente</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#1a7a3a"></div> Recibido</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--danger-bd)"></div> Vencido</div>
+        </div>
+      </div>
+      <div id="cal-body"></div>
+    </div>
+
+    <!-- LIST VIEW -->
+    <div id="view-list" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:14px;font-weight:700;letter-spacing:0.04em;">Todos los pedidos</div>
+        <div style="display:flex;gap:8px;">
+          <select id="list-filter" onchange="renderList()" style="font-family:var(--font);font-size:10px;font-weight:600;padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--r);background:#fff;text-transform:uppercase;letter-spacing:0.05em;">
+            <option value="todos">Todos</option>
+            <option value="pendiente">Pendientes</option>
+            <option value="recibido">Recibidos</option>
+            <option value="vencido">Vencidos</option>
+          </select>
+        </div>
+      </div>
+      <div id="list-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalle pedido -->
+<div class="modal-bg" id="modal-det" onclick="closeBg(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="width:480px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-title" id="md-title"></div>
+    <div class="modal-sub" id="md-sub"></div>
+    <div class="modal-field"><label>Proveedor</label><div class="val" id="md-prov"></div></div>
+    <div class="modal-field"><label>Materia prima</label><div class="val" id="md-mat"></div></div>
+    <div class="modal-field"><label>Cantidad</label><div class="val" id="md-qty"></div></div>
+    <div class="modal-field"><label>Fecha de recepción estimada</label><div class="val" id="md-fecha"></div></div>
+    <div class="modal-field" id="md-notas-wrap" style="display:none"><label>Notas del pedido</label><div class="val" id="md-notas"></div></div>
+    <div class="modal-field">
+      <label>Estado del pedido</label>
+      <div class="status-btns">
+        <button class="status-btn" id="sb-pendiente" onclick="setStatus('pendiente')"><i class="ti ti-clock"></i> Pendiente</button>
+        <button class="status-btn" id="sb-recibido" onclick="setStatus('recibido')"><i class="ti ti-circle-check"></i> Recibido</button>
+      </div>
+    </div>
+
+    <!-- COMENTARIOS -->
+    <div class="comments-section">
+      <div class="comments-title">COMENTARIOS</div>
+      <div id="md-comments-list"></div>
+      <div class="comment-input-row">
+        <textarea class="comment-input" id="md-comment-input" rows="2" placeholder="Añade un comentario..."></textarea>
+        <button class="btn btn-add-comment" onclick="addComment()"><i class="ti ti-send"></i></button>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-outline" onclick="document.getElementById('modal-det').classList.remove('open')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS_KEY='ccmp_pedidos';
+const LS_STATUS_KEY='ccmp_pedidos_status';
+const LS_COMMENTS_KEY='ccmp_pedidos_comments';
+const PROVEEDORES_DEFAULT=[
+  {id:'prov1',nombre:'Proveedor 1',color:'#185FA5',dias:5},
+  {id:'prov2',nombre:'Proveedor 2',color:'#0F6E56',dias:7},
+  {id:'prov3',nombre:'Proveedor 3',color:'#854F0B',dias:3},
+  {id:'prov4',nombre:'Proveedor 4',color:'#993C1D',dias:10},
+  {id:'prov5',nombre:'Proveedor 5',color:'#534AB7',dias:4},
+  {id:'prov6',nombre:'Proveedor 6',color:'#3B6D11',dias:6},
+];
+
+let pedidos=[];
+let statusMap={};   // {pedidoId: 'pendiente'|'recibido'}
+let commentsMap={}; // {pedidoId: [{id,text,ts,read}]}
+let proveedores=PROVEEDORES_DEFAULT;
+let vY=new Date().getFullYear();
+let vM=new Date().getMonth();
+let currentView='cal';
+let activePedidoId=null;
+
+const MN=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+const DN=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+
+// ───────────── PERSISTENCIA COMPARTIDA (backend PHP) ─────────────
+// Lee y escribe en el mismo data.json del servidor que usa Control de Compras,
+// así los pedidos/proveedores creados allí aparecen aquí, y los estados de
+// recepción y comentarios de aquí se comparten entre todos los dispositivos.
+// Si no hay servidor, usa localStorage como respaldo.
+const API='data.php';
+const LS_STATE='ccmp_state';
+let _saveTimer=null;
+function pushState(){
+  // Carga el estado actual del servidor, fusiona nuestros cambios y reenvía,
+  // para no pisar lo que escribe la otra app (pedidos, stock, etc.).
+  const payload={statusMap, commentsMap};
+  try{localStorage.setItem(LS_STATUS_KEY,JSON.stringify(statusMap));}catch(e){}
+  try{localStorage.setItem(LS_COMMENTS_KEY,JSON.stringify(commentsMap));}catch(e){}
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(async()=>{
+    let base={};
+    try{const r=await fetch(API,{cache:'no-store'});if(r.ok)base=await r.json()||{};}catch(e){}
+    base.statusMap=statusMap; base.commentsMap=commentsMap;
+    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(base)}).catch(()=>{});
+  },400);
+}
+function applyState(s){
+  if(!s||typeof s!=='object')return;
+  if(Array.isArray(s.pedidos))pedidos=s.pedidos;
+  if(Array.isArray(s.proveedores)&&s.proveedores.length)proveedores=s.proveedores;
+  if(s.statusMap&&typeof s.statusMap==='object')statusMap=s.statusMap;
+  if(s.commentsMap&&typeof s.commentsMap==='object')commentsMap=s.commentsMap;
+}
+async function loadFromLS(){
+  let loaded=false;
+  try{
+    const r=await fetch(API,{cache:'no-store'});
+    if(r.ok){const s=await r.json();if(s&&Object.keys(s).length){applyState(s);loaded=true;}}
+  }catch(e){}
+  if(!loaded){
+    // Respaldo local (o primera vez sin servidor)
+    try{const raw=localStorage.getItem(LS_KEY);if(raw)pedidos=JSON.parse(raw);}catch(e){}
+    try{const rawP=localStorage.getItem('ccmp_proveedores');if(rawP)proveedores=JSON.parse(rawP);}catch(e){}
+    try{const rawS=localStorage.getItem(LS_STATUS_KEY);if(rawS)statusMap=JSON.parse(rawS);}catch(e){}
+    try{const rawC=localStorage.getItem(LS_COMMENTS_KEY);if(rawC)commentsMap=JSON.parse(rawC);}catch(e){}
+  }
+  updateSyncBadge();
+  renderAll();
+}
+function saveStatus(){pushState();}
+function saveComments(){pushState();}
+// ─────────────────────────────────────────────────────────────────
+
+function fmtShort(d){if(!d)return '—';const dd=new Date(d);return dd.getDate()+' '+['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][dd.getMonth()];}
+function fmtFull(d){if(!d)return '—';const dd=new Date(d);return dd.getDate()+' de '+['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][dd.getMonth()]+' de '+dd.getFullYear();}
+
+function hasUnreadComments(pedidoId){
+  const cs=commentsMap[pedidoId]||[];
+  return cs.some(c=>!c.read);
+}
+
+function addComment(){
+  const text=document.getElementById('md-comment-input').value.trim();
+  if(!text||!activePedidoId)return;
+  if(!commentsMap[activePedidoId])commentsMap[activePedidoId]=[];
+  commentsMap[activePedidoId].push({
+    id:'c'+Date.now(),
+    text,
+    ts:new Date().toISOString(),
+    read:false
+  });
+  document.getElementById('md-comment-input').value='';
+  saveComments();
+  renderComments(activePedidoId);
+  renderAll();
+}
+
+function toggleCommentRead(pedidoId,commentId){
+  const cs=commentsMap[pedidoId]||[];
+  const c=cs.find(x=>x.id===commentId);
+  if(c){c.read=!c.read;saveComments();renderComments(pedidoId);renderAll();}
+}
+
+function renderComments(pedidoId){
+  const list=document.getElementById('md-comments-list');
+  if(!list)return;
+  const cs=commentsMap[pedidoId]||[];
+  if(!cs.length){
+    list.innerHTML='<div style="font-size:10px;color:var(--text3);padding:6px 0 10px;">Sin comentarios aún.</div>';
+    return;
+  }
+  list.innerHTML='';
+  for(const c of [...cs].reverse()){
+    const d=new Date(c.ts);
+    const dateStr=d.getDate()+' '+['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][d.getMonth()]+' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+    const div=document.createElement('div');
+    div.className='comment-item '+(c.read?'read':'unread');
+    div.innerHTML=`
+      <div class="comment-header">
+        <div class="comment-text" style="text-transform:none;">${c.text}</div>
+        <button class="comment-read-btn ${c.read?'read-btn':'unread-btn'}" onclick="toggleCommentRead('${pedidoId}','${c.id}')">
+          <i class="ti ti-${c.read?'circle-check':'circle'}"></i>${c.read?'LEÍDO':'MARCAR LEÍDO'}
+        </button>
+      </div>
+      <div class="comment-meta">${dateStr}</div>`;
+    list.appendChild(div);
+  }
+}
+
+function updateSyncBadge(){
+  const b=document.getElementById('sync-badge');
+  if(!pedidos.length){b.className='sync-badge sync-empty';b.innerHTML='<i class="ti ti-inbox"></i> Sin pedidos';return;}
+  const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  b.className='sync-badge sync-ok';b.innerHTML=`<i class="ti ti-circle-check"></i> ${pedidos.length} pedidos · ${now}`;
+}
+
+function getRecepcion(p){
+  const prov=proveedores.find(x=>x.id===p.provId);
+  const d=new Date(p.fecha+'T12:00:00');
+  if(prov)d.setDate(d.getDate()+prov.dias);
+  return d;
+}
+
+function getStatus(p){
+  if(statusMap[p.id])return statusMap[p.id];
+  const today=new Date();today.setHours(0,0,0,0);
+  const rec=getRecepcion(p);rec.setHours(0,0,0,0);
+  return rec<today?'vencido':'pendiente';
+}
+
+function getPedidosForDay(date){
+  const y=date.getFullYear(),m=date.getMonth(),d=date.getDate();
+  return pedidos.filter(p=>{
+    const r=getRecepcion(p);
+    return r.getFullYear()===y&&r.getMonth()===m&&r.getDate()===d;
+  });
+}
+
+function renderStats(){
+  const today=new Date();today.setHours(0,0,0,0);
+  let total=pedidos.length,pendientes=0,recibidos=0,vencidos=0;
+  for(const p of pedidos){
+    const s=getStatus(p);
+    if(s==='recibido')recibidos++;
+    else if(s==='vencido')vencidos++;
+    else pendientes++;
+  }
+  const el=document.getElementById('stats-row');
+  el.innerHTML=`
+    <div class="stat-card"><div class="stat-label">Total pedidos</div><div class="stat-value">${total}</div><div class="stat-sub">REGISTRADOS</div></div>
+    <div class="stat-card warn"><div class="stat-label">Pendientes</div><div class="stat-value">${pendientes}</div><div class="stat-sub">EN ESPERA</div></div>
+    <div class="stat-card ok"><div class="stat-label">Recibidos</div><div class="stat-value">${recibidos}</div><div class="stat-sub">CONFIRMADOS</div></div>
+    <div class="stat-card${vencidos>0?' danger':''}"><div class="stat-label">Vencidos</div><div class="stat-value">${vencidos}</div><div class="stat-sub">SIN CONFIRMAR</div></div>`;
+}
+
+function getDaysInMonth(y,m){
+  const days=[];
+  const first=new Date(y,m,1);
+  const last=new Date(y,m+1,0);
+  // Fill leading days from prev month to start on Monday
+  let dow=first.getDay();if(dow===0)dow=7;
+  for(let i=dow-1;i>0;i--){const d=new Date(y,m,1-i);d._out=true;days.push(d);}
+  // Current month
+  for(let i=1;i<=last.getDate();i++)days.push(new Date(y,m,i));
+  // Fill trailing days
+  let trail=days.length%7;if(trail>0)for(let i=1;i<=7-trail;i++){const d=new Date(y,m+1,i);d._out=true;days.push(d);}
+  return days;
+}
+
+function getWeekNum(d){
+  const date=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=date.getUTCDay()||7;
+  date.setUTCDate(date.getUTCDate()+4-day);
+  const yearStart=new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  return{w:Math.ceil((((date-yearStart)/86400000)+1)/7),y:date.getUTCFullYear()};
+}
+
+function renderCal(){
+  document.getElementById('cal-title').textContent=MN[vM]+' '+vY;
+  const body=document.getElementById('cal-body');body.innerHTML='';
+  const days=getDaysInMonth(vY,vM);
+  const today=new Date();today.setHours(0,0,0,0);
+  const todayStr=today.toDateString();
+
+  // Group into weeks
+  for(let w=0;w<days.length;w+=7){
+    const week=days.slice(w,w+7);
+    const mon=week[0];
+    const winfo=getWeekNum(mon._out?week.find(d=>!d._out)||mon:mon);
+    const isCW=winfo.w===getWeekNum(today).w&&winfo.y===today.getFullYear();
+
+    const block=document.createElement('div');
+    block.className='week-block'+(isCW?' cw':'');
+
+    // Week header row with day names and numbers
+    const hdr=document.createElement('div');
+    hdr.className='week-hdr'+(isCW?' cw-hdr':'');
+
+    // Week label cell
+    const wlabel=document.createElement('div');
+    wlabel.className='wh-label';
+    const hasRec=week.some(d=>getPedidosForDay(d).length>0);
+    wlabel.innerHTML=`<div class="wh-week">S${winfo.w}</div><div class="wh-range">${fmtShort(week[0])}–${fmtShort(week[6])}</div>${isCW?'<span class="cw-badge">HOY</span>':''}`;
+    hdr.appendChild(wlabel);
+
+    for(const d of week){
+      const isToday=d.toDateString()===todayStr;
+      const isPast=d<today&&!isToday;
+      const isWeekend=d.getDay()===0||d.getDay()===6;
+      const dayPeds=getPedidosForDay(d);
+      const th=document.createElement('div');
+      th.className='wh-day'+(isToday?' today':'')+(isPast?' past':'')+(dayPeds.length?' has-recep':'');
+      th.innerHTML=`<div class="wh-day-name">${DN[d.getDay()===0?6:d.getDay()-1]}</div><div class="wh-day-num">${d.getDate()}</div>`;
+      hdr.appendChild(th);
+    }
+    block.appendChild(hdr);
+
+    // Day cells row
+    const cells=document.createElement('div');
+    cells.className='day-cells';
+
+    // Week label spacer
+    const spacer=document.createElement('div');
+    spacer.className='week-label-cell'+(isCW?' cw':'');
+    cells.appendChild(spacer);
+
+    for(const d of week){
+      const isToday=d.toDateString()===todayStr;
+      const isPast=d<today&&!isToday;
+      const isWeekend=d.getDay()===0||d.getDay()===6;
+      const isOut=d._out;
+      const cell=document.createElement('div');
+      cell.className='day-cell'+(isToday?' today':'')+(isPast&&!isOut?' past':'')+(isWeekend?' weekend':'')+(isOut?' out-month':'');
+
+      const dayPeds=getPedidosForDay(d);
+      if(dayPeds.length){
+        for(const p of dayPeds){
+          const prov=proveedores.find(x=>x.id===p.provId);
+          const status=getStatus(p);
+          const matNom=p.matId||'—';
+          const card=document.createElement('div');
+          card.className=`recep-card ${status}`;
+          card.title=`${matNom} · ${Number(p.qty).toLocaleString()} KG`;
+          const unread=hasUnreadComments(p.id);
+          card.innerHTML=`
+            ${unread?'<div class="rc-comment-badge" title="Comentarios sin leer"></div>':''}
+            <div class="rc-prov" style="color:${prov?prov.color:'#999'}">${prov?prov.nombre:'—'}</div>
+            <div class="rc-mat">${matNom}</div>
+            <div class="rc-kg">${Number(p.qty).toLocaleString()} KG</div>
+            <span class="rc-status ${status}"><i class="ti ti-${status==='recibido'?'circle-check':status==='vencido'?'alert-circle':'clock'}"></i>${status==='recibido'?'RECIBIDO':status==='vencido'?'VENCIDO':'PENDIENTE'}</span>`;
+          card.onclick=()=>openDetail(p.id);
+          cell.appendChild(card);
+        }
+      }
+      cells.appendChild(cell);
+    }
+    block.appendChild(cells);
+    body.appendChild(block);
+  }
+}
+
+function renderList(){
+  const filter=document.getElementById('list-filter').value;
+  const body=document.getElementById('list-body');body.innerHTML='';
+  const today=new Date();today.setHours(0,0,0,0);
+
+  const filtered=pedidos.filter(p=>{
+    if(filter==='todos')return true;
+    return getStatus(p)===filter;
+  }).sort((a,b)=>getRecepcion(a)-getRecepcion(b));
+
+  if(!filtered.length){
+    body.innerHTML='<div class="empty-state"><i class="ti ti-inbox"></i><p>No hay pedidos en esta categoría</p></div>';
+    return;
+  }
+
+  const table=document.createElement('table');table.className='list-table';
+  table.innerHTML=`<thead><tr>
+    <th>Fecha recepción</th>
+    <th>Proveedor</th>
+    <th>Materia prima</th>
+    <th>Cantidad</th>
+    <th>Fecha pedido</th>
+    <th>Estado</th>
+    <th>Comentarios</th>
+    <th></th>
+  </tr></thead>`;
+  const tbody=document.createElement('tbody');
+  for(const p of filtered){
+    const prov=proveedores.find(x=>x.id===p.provId);
+    const status=getStatus(p);
+    const recep=getRecepcion(p);
+    const pedFecha=new Date(p.fecha+'T12:00:00');
+    const cs=commentsMap[p.id]||[];
+    const unread=cs.filter(c=>!c.read).length;
+    const total=cs.length;
+    const commentCell=total>0
+      ?`<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;cursor:pointer;font-weight:600;" onclick="openDetail('${p.id}')">
+          ${unread>0?`<span style="background:var(--warn-bd);color:#fff;border-radius:3px;padding:1px 6px;font-size:9px;">${unread} SIN LEER</span>`:''}
+          <span style="color:var(--text3)">${total} ${total===1?'COMENTARIO':'COMENTARIOS'}</span>
+        </span>`
+      :`<span style="font-size:10px;color:var(--text3);cursor:pointer;" onclick="openDetail('${p.id}')">—</span>`;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td style="font-family:var(--mono);font-weight:600">${fmtShort(recep)}</td>
+      <td><span class="prov-dot" style="background:${prov?prov.color:'#999'}"></span>${prov?prov.nombre:'—'}</td>
+      <td style="font-weight:600">${p.matId||'—'}</td>
+      <td style="font-family:var(--mono)">${Number(p.qty).toLocaleString()} KG</td>
+      <td style="font-family:var(--mono);color:var(--text3)">${fmtShort(pedFecha)}</td>
+      <td><span class="badge badge-${status}">${status==='recibido'?'RECIBIDO':status==='vencido'?'VENCIDO':'PENDIENTE'}</span></td>
+      <td>${commentCell}</td>
+      <td>${status!=='recibido'?`<button class="btn-sm btn-sm-green" onclick="markRecibido('${p.id}')"><i class="ti ti-circle-check"></i> Marcar recibido</button>`:''}</td>`;
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  body.appendChild(table);
+}
+
+function openDetail(id){
+  const p=pedidos.find(x=>x.id===id);if(!p)return;
+  const prov=proveedores.find(x=>x.id===p.provId);
+  const status=getStatus(p);
+  const recep=getRecepcion(p);
+  activePedidoId=id;
+  document.getElementById('md-title').textContent=(prov?prov.nombre:'Pedido')+' — '+fmtShort(recep);
+  document.getElementById('md-sub').textContent='Detalle del pedido';
+  document.getElementById('md-prov').textContent=prov?prov.nombre:'—';
+  document.getElementById('md-mat').textContent=p.matId||'—';
+  document.getElementById('md-qty').textContent=Number(p.qty).toLocaleString()+' KG';
+  document.getElementById('md-fecha').textContent=fmtFull(recep);
+  if(p.notas){document.getElementById('md-notas').textContent=p.notas;document.getElementById('md-notas-wrap').style.display='';}
+  else{document.getElementById('md-notas-wrap').style.display='none';}
+  document.getElementById('sb-pendiente').className='status-btn'+(status==='pendiente'||status==='vencido'?' active-pendiente':'');
+  document.getElementById('sb-recibido').className='status-btn'+(status==='recibido'?' active-recibido':'');
+  document.getElementById('md-comment-input').value='';
+  renderComments(id);
+  document.getElementById('modal-det').classList.add('open');
+}
+
+function setStatus(s){
+  if(!activePedidoId)return;
+  statusMap[activePedidoId]=s;
+  saveStatus();
+  document.getElementById('sb-pendiente').className='status-btn'+(s==='pendiente'?' active-pendiente':'');
+  document.getElementById('sb-recibido').className='status-btn'+(s==='recibido'?' active-recibido':'');
+  renderAll();
+}
+
+function markRecibido(id){
+  statusMap[id]='recibido';
+  saveStatus();
+  renderAll();
+}
+
+function closeBg(e){if(e.target===document.getElementById('modal-det'))document.getElementById('modal-det').classList.remove('open');}
+
+function switchView(v){
+  currentView=v;
+  document.getElementById('view-cal').style.display=v==='cal'?'':'none';
+  document.getElementById('view-list').style.display=v==='list'?'':'none';
+  document.getElementById('tab-cal').className='tnav'+(v==='cal'?' active':'');
+  document.getElementById('tab-list').className='tnav'+(v==='list'?' active':'');
+  renderAll();
+}
+
+function prevMonth(){vM--;if(vM<0){vM=11;vY--;}renderCal();}
+function nextMonth(){vM++;if(vM>11){vM=0;vY++;}renderCal();}
+
+function renderAll(){
+  renderStats();
+  if(currentView==='cal')renderCal();
+  else renderList();
+}
+
+// Initial load
+loadFromLS();
+</script>
+</body>
+</html>
