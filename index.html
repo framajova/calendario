@@ -216,11 +216,15 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 .eh-pink{background:#F4C0D1;color:var(--pink-tx);}
 .cdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .cdot-blue{background:var(--blue-bd);}.cdot-teal{background:var(--teal-bd);}.cdot-amber{background:var(--amber-bd);}.cdot-coral{background:var(--coral-bd);}.cdot-purple{background:var(--purple-bd);}.cdot-green{background:var(--green-bd);}.cdot-pink{background:var(--pink-bd);}
-.color-row{display:flex;align-items:center;gap:7px;padding:9px 14px;border-bottom:1.5px solid var(--border);background:var(--bg2);}
+.color-row{display:flex;align-items:center;gap:7px;padding:9px 14px;border-bottom:1.5px solid var(--border);background:var(--bg2);flex-wrap:wrap;}
 .color-row-lbl{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.06em;margin-right:3px;}
 .color-chip{width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--border);cursor:pointer;padding:0;}
 .color-chip:hover{box-shadow:0 0 0 1.5px var(--text2);}
 .color-chip.sel{box-shadow:0 0 0 2px var(--text);transform:scale(1.12);}
+.color-custom{width:24px;height:24px;border-radius:50%;border:1.5px dashed var(--text3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;position:relative;color:var(--text2);margin-left:3px;}
+.color-custom:hover{border-color:var(--text);color:var(--text);}
+.color-custom input[type=color]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:none;padding:0;}
+.color-custom i{font-size:13px;pointer-events:none;}
 .name-inp{font-size:13px;font-weight:500;border:none;background:transparent;color:inherit;padding:0;flex:1;outline:none;font-family:var(--font);text-transform:uppercase;letter-spacing:0.04em;min-width:0;}
 .name-inp:focus{border-bottom:1.5px solid currentColor;}
 .gsm{background:none;border:1px solid currentColor;padding:4px 8px;border-radius:var(--r);font-size:9px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:4px;opacity:0.7;font-family:var(--font);text-transform:uppercase;letter-spacing:0.05em;}
@@ -742,7 +746,7 @@ function renderCal(){
         // slot 1 (bot): show orders here if any
       }
       if(!ents.length)ch.innerHTML=`<span class="chip-add"><i class="ti ti-plus"></i> AÑADIR</span>`;
-      else for(const e of ents){const r=RECETAS.find(x=>x.id===e.rid);const c2=document.createElement('span');c2.className=`chip chip-${r?r.color:'blue'}`;c2.textContent=`${r?r.nombre.toUpperCase():e.rid} ×${e.t}`;ch.appendChild(c2);}
+      else for(const e of ents){const r=RECETAS.find(x=>x.id===e.rid);const c2=document.createElement('span');c2.className='chip';c2.style.cssText=chipStyle(r?r.color:'blue');c2.textContent=`${r?r.nombre.toUpperCase():e.rid} ×${e.t}`;ch.appendChild(c2);}
 
       // Show order chips on slot 0 (top row), non-clickable overlay after production chips
       if(sl===0){
@@ -783,7 +787,7 @@ function renderCal(){
       const pillRow=document.createElement('div');pillRow.className='prod-summary';
       for(const[,s] of Object.entries(summary)){
         const pill=document.createElement('span');
-        pill.className=`prod-pill prod-pill-${s.color}`;
+        pill.className='prod-pill';pill.style.cssText=chipStyle(s.color);
         pill.innerHTML=`<i class="ti ti-box"></i>${s.nombre.toUpperCase()} · ${s.turnos}T · ${s.masas.toFixed(1)} MASAS · ${Math.round(s.kg).toLocaleString()}KG`;
         pillRow.appendChild(pill);
       }
@@ -1079,18 +1083,43 @@ function saveProv(){
 
 function renderRecetaGrid(){
   const g=document.getElementById('receta-grid');g.innerHTML='';
-  for(const r of RECETAS){const c=document.createElement('div');c.className=`rc rc-${r.color}${activeRID===r.id?' active':''}`;c.innerHTML=`<div class="rc-name">${r.nombre.toUpperCase()}</div><div class="rc-count">${r.ingredientes.length} ING.</div>`;c.onclick=()=>{activeRID=r.id;renderRecetaGrid();renderEditor();};g.appendChild(c);}
+  for(const r of RECETAS){const c=document.createElement('div');c.className=`rc${activeRID===r.id?' active':''}`;c.style.cssText=rcStyle(r.color);c.innerHTML=`<div class="rc-name">${r.nombre.toUpperCase()}</div><div class="rc-count">${r.ingredientes.length} ING.</div>`;c.onclick=()=>{activeRID=r.id;renderRecetaGrid();renderEditor();};g.appendChild(c);}
   const add=document.createElement('div');add.className='rc rc-new';add.innerHTML='<div class="rc-name"><i class="ti ti-plus"></i> NUEVA RECETA</div><div class="rc-count">crear desde cero</div>';add.onclick=addReceta;g.appendChild(add);
 }
 const RECETA_COLORS=['blue','teal','amber','coral','purple','green','pink'];
-// Devuelve el color menos usado entre las recetas actuales, para diferenciar la nueva
+// Hex base de los colores con nombre (para convertirlos al sistema flexible)
+const NAMED_HEX={blue:'#185FA5',teal:'#0F6E56',amber:'#BA7517',coral:'#C2410C',purple:'#534AB7',green:'#3B6D11',pink:'#993556'};
+// Paleta amplia para el selector (24 tonos) + el usuario puede elegir cualquiera con el selector libre
+const PALETA=['#185FA5','#2563EB','#0EA5E9','#0891B2','#0F6E56','#059669','#16A34A','#3B6D11','#65A30D','#CA8A04','#BA7517','#EA580C','#C2410C','#DC2626','#E11D48','#993556','#DB2777','#A21CAF','#7C3AED','#534AB7','#4F46E5','#64748B','#57534E','#1F2937'];
+// Resuelve el color de una receta a un hex, sea nombre-clase clásico o hex directo
+function colorHex(c){if(!c)return '#185FA5';if(c[0]==='#')return c;return NAMED_HEX[c]||'#185FA5';}
+// Aclara/oscurece un hex (amount: -1..1) para generar fondos y textos
+function shade(hex,amt){
+  hex=colorHex(hex);const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  if(amt>0){r+=(255-r)*amt;g+=(255-g)*amt;b+=(255-b)*amt;}
+  else{r*=(1+amt);g*=(1+amt);b*=(1+amt);}
+  return '#'+[r,g,b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+}
+// Estilos inline para cada uso, a partir del color de la receta
+function rcStyle(c){const h=colorHex(c);return `background:${shade(h,0.86)};color:${shade(h,-0.45)};border-left:4px solid ${h};`;}
+function ehStyle(c){const h=colorHex(c);return `background:${shade(h,0.55)};color:${shade(h,-0.5)};`;}
+function chipStyle(c){const h=colorHex(c);return `background:${shade(h,0.82)};color:${shade(h,-0.45)};`;}
 function colorAuto(){
-  const uso={};for(const c of RECETA_COLORS)uso[c]=0;
-  for(const r of RECETAS)if(uso[r.color]!=null)uso[r.color]++;
-  let mejor=RECETA_COLORS[0],min=Infinity;
-  for(const c of RECETA_COLORS){if(uso[c]<min){min=uso[c];mejor=c;}}
+  // Elige el color de la paleta más "lejano" a los ya usados (mayor diferencia mínima)
+  const usados=RECETAS.map(r=>colorHex(r.color));
+  if(!usados.length)return PALETA[0];
+  let mejor=PALETA[0],mejorDist=-1;
+  for(const cand of PALETA){
+    let distMin=Infinity;
+    for(const u of usados){const d=colorDist(cand,u);if(d<distMin)distMin=d;}
+    if(distMin>mejorDist){mejorDist=distMin;mejor=cand;}
+  }
   return mejor;
 }
+function colorDist(a,b){a=colorHex(a);b=colorHex(b);const na=parseInt(a.slice(1),16),nb=parseInt(b.slice(1),16);
+  const dr=((na>>16)&255)-((nb>>16)&255),dg=((na>>8)&255)-((nb>>8)&255),db=(na&255)-(nb&255);
+  return dr*dr+dg*dg+db*db;}
 function addReceta(){
   const nombre=prompt('Nombre de la nueva receta:');
   if(nombre===null)return;
@@ -1102,7 +1131,7 @@ function addReceta(){
   rebuildXMAP();
   saveState();renderRecetaGrid();renderEditor();renderStock();
 }
-// Cambiar el color de la receta activa
+// Cambiar el color de la receta activa (acepta nombre-clase o hex)
 function setRecetaColor(c){
   const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;
   r.color=c;
@@ -1123,8 +1152,8 @@ function renderEditor(){
   if(!activeRID){ed.innerHTML='<p style="font-size:11px;color:var(--text3)">Selecciona una receta para editar.</p>';return;}
   const r=RECETAS.find(x=>x.id===activeRID);if(!r){ed.innerHTML='';return;}
   ed.innerHTML=`<div class="editor-wrap">
-    <div class="editor-head eh-${r.color}"><div class="cdot cdot-${r.color}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button><button class="gsm gsm-del" onclick="delReceta()" title="Eliminar receta"><i class="ti ti-trash"></i></button></div>
-    <div class="color-row"><span class="color-row-lbl">COLOR:</span>${RECETA_COLORS.map(c=>`<button class="color-chip cdot-${c}${r.color===c?' sel':''}" title="${c}" onclick="setRecetaColor('${c}')"></button>`).join('')}</div>
+    <div class="editor-head" style="${ehStyle(r.color)}"><div class="cdot" style="background:${colorHex(r.color)}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button><button class="gsm gsm-del" onclick="delReceta()" title="Eliminar receta"><i class="ti ti-trash"></i></button></div>
+    <div class="color-row"><span class="color-row-lbl">COLOR:</span>${PALETA.map(c=>`<button class="color-chip${colorHex(r.color).toUpperCase()===c.toUpperCase()?' sel':''}" style="background:${c}" title="${c}" onclick="setRecetaColor('${c}')"></button>`).join('')}<label class="color-custom" title="Color personalizado"><input type="color" value="${colorHex(r.color)}" oninput="setRecetaColor(this.value)"><i class="ti ti-palette"></i></label></div>
     <div class="sim-box">
       <div class="sim-title"><i class="ti ti-calculator"></i> KG DE LA MASA (tamaño de lote)</div>
       <div class="sim-row">
