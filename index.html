@@ -178,6 +178,10 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 .color-picker{display:flex;gap:7px;flex-wrap:wrap;margin-top:4px;}
 .csw{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
 .csw.sel{border-color:var(--text);transform:scale(1.15);}
+.csw-custom{width:22px;height:22px;border-radius:50%;border:1.5px dashed var(--text3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;position:relative;color:var(--text2);}
+.csw-custom:hover{border-color:var(--text);color:var(--text);}
+.csw-custom input[type=color]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;border:none;padding:0;}
+.csw-custom i{font-size:13px;pointer-events:none;}
 .mat-wrap{border:1px solid var(--border);border-radius:var(--r);max-height:240px;overflow-y:auto;}
 .mat-row{display:flex;align-items:center;padding:6px 10px;gap:8px;border-bottom:1px solid var(--border);font-size:10px;}
 .mat-row:last-child{border-bottom:none;}
@@ -667,27 +671,43 @@ async function loadState(){
 
 function getProvForMat(id){return proveedores.find(p=>p.materias.includes(id));}
 
+// Pedidos de una materia con su fecha de LLEGADA (fecha pedido + plazo proveedor)
+function pedidosLlegada(matId){
+  const res=[];
+  for(const p of pedidos){
+    if(p.matId!==matId)continue;
+    const prov=proveedores.find(x=>x.id===p.provId);
+    const lleg=new Date(p.fecha+'T12:00:00');
+    if(prov)lleg.setDate(lleg.getDate()+prov.dias);
+    res.push({fecha:lleg,qty:Number(p.qty)||0});
+  }
+  return res;
+}
 function calcAgotamiento(matId){
-  // Walk weeks in order (current month + next 2 months) consuming real programmed stock
-  // Returns {semana, fecha (start of week), stockRestante} when stock runs out, or null if OK
+  // Recorre las semanas consumiendo el stock programado, SUMANDO los pedidos
+  // que llegan en cada momento. Devuelve cuándo se queda el stock en negativo
+  // (ya contando los pedidos), o null si el stock + pedidos cubren todo.
   let stockRest=stock[matId]||0;
   const today=new Date();today.setHours(0,0,0,0);
+  const llegadas=pedidosLlegada(matId);   // entradas futuras de stock
 
-  // Build ordered list of weeks across current + next months to cover multi-month programming
+  // Construir lista ordenada de semanas (mes actual + 2 siguientes)
   const weeksToCheck=[];
   for(let mo=0;mo<3;mo++){
     const yr2=vM+mo>11?vY+1:vY;
     const mo2=(vM+mo)%12;
     for(const w of getWeeks(yr2,mo2)){
-      // avoid duplicates (weeks spanning month boundary appear in both months)
       if(!weeksToCheck.find(x=>x.key===w.key))weeksToCheck.push(w);
     }
   }
   weeksToCheck.sort((a,b)=>a.mon-b.mon);
 
   for(const w of weeksToCheck){
-    // Only process weeks from today onwards
     if(w.sun<today)continue;
+    // Sumar pedidos cuya llegada cae en/antes del fin de esta semana
+    for(const l of llegadas){
+      if(!l._used && l.fecha<=w.sun){stockRest+=l.qty;l._used=true;}
+    }
     const ents=[...ge(w.key,0),...ge(w.key,1)];
     if(!ents.length)continue;
     const c=calcC(ents);
@@ -698,7 +718,7 @@ function calcAgotamiento(matId){
       return{semana:w.w,fecha:w.mon,stockRestante:stockRest+consumoSemana,consumoSemana};
     }
   }
-  return null; // stock covers all programmed weeks
+  return null; // stock + pedidos cubren toda la programación
 }
 function fmtShort(d){return `${d.getDate()} ${['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][d.getMonth()]}`;}
 
@@ -834,9 +854,12 @@ function renderStock(){
     if(st===0&&cons===0)continue;
     const rest=st-cons;const pct=st>0?rest/st:-1;
     const prov=getProvForMat(id);
+    // ¿Se agota pese a los pedidos ya creados? (calcAgotamiento ya suma los pedidos)
+    const agotMat=cons>0?calcAgotamiento(id):null;
     let badge,estado;
     if(cons===0){badge='badge-ok';estado='SIN CONSUMO';}
-    else if(rest<0){badge='badge-danger';estado='SIN STOCK';ac++;}
+    else if(agotMat){badge='badge-danger';estado='SIN STOCK';ac++;}
+    else if(rest<0){badge='badge-warn';estado='CUBIERTO C/PEDIDO';}
     else if(pct<0.2){badge='badge-warn';estado='STOCK BAJO';ac++;}
     else{badge='badge-ok';estado='OK';}
     const provCell=prov?`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:${prov.color};display:inline-block;flex-shrink:0;"></span>${prov.nombre.toUpperCase()}</span>`:'<span style="color:var(--text3)">—</span>';
@@ -849,10 +872,8 @@ function renderStock(){
   const today=new Date();today.setHours(0,0,0,0);
   let isUrgent=false;
   for(const [id,d] of Object.entries(c)){
-    const st=stock[id]||0;const rest=st-d.kg;const pct=st>0?rest/st:-1;
-    if(rest>=0&&pct>=0.2)continue;
     const prov=getProvForMat(id);
-    const agot=calcAgotamiento(id);
+    const agot=calcAgotamiento(id);   // ya considera los pedidos
     if(prov&&agot){
       const dl=new Date(agot.fecha);dl.setDate(dl.getDate()-prov.dias);
       const daysLeft=Math.floor((dl-today)/86400000);
@@ -893,13 +914,18 @@ function renderAlerts(c){
   const items=[];
   for(const [id,d] of Object.entries(c)){
     const st=stock[id]||0;const rest=st-d.kg;const pct=st>0?rest/st:-1;
-    if(rest>=0&&pct>=0.2)continue;
     const prov=getProvForMat(id);const agot=calcAgotamiento(id);
     const nextP=getNextPedidoForMat(id);
+    // Es alerta si: se agota pese a los pedidos (agot != null),
+    // o está por debajo del umbral y NO tiene pedido que lo cubra.
+    const bajoUmbral=(rest<0||pct<0.2);
+    if(!agot){
+      // Stock (con pedidos) cubre todo: solo alertar si está bajo y sin pedido
+      if(!(bajoUmbral && !nextP))continue;
+    }
     let isUrgent=false;
     if(prov&&agot){const dl=new Date(agot.fecha);dl.setDate(dl.getDate()-prov.dias);const daysLeft=Math.floor((dl-today)/86400000);if(daysLeft<=2)isUrgent=true;}
-    if(rest<0)isUrgent=true;
-    // nivel depends solely on whether a pedido exists
+    // nivel depende de si hay pedido y de si ese pedido cubre o no
     const nivel=nextP?'con_pedido':'sin_pedido';
     items.push({id,d,st,rest,pct,prov,agot,nivel,nextP,isUrgent});
   }
@@ -925,7 +951,7 @@ function renderAlerts(c){
   const filtered=alertFiltro==='todas'?items:alertFiltro==='urgente'?items.filter(it=>it.isUrgent):items.filter(it=>it.nivel===alertFiltro);
   if(!filtered.length){list.innerHTML='<div class="alert-box alert-info"><div class="alert-title">SIN ALERTAS EN ESTA CATEGORÍA</div></div>';return;}
   for(const {id,d,st,rest,pct,prov,agot,nivel,nextP} of filtered){
-    const isOut=rest<0;let deadlineHtml='';
+    const isOut=!!agot;let deadlineHtml='';   // "sin stock" real = se agota pese a pedidos
     if(prov&&agot){
       const dl=new Date(agot.fecha);dl.setDate(dl.getDate()-prov.dias);
       const daysLeft=Math.floor((dl-today)/86400000);
@@ -955,9 +981,16 @@ function renderAlerts(c){
     } else if(!prov){
       deadlineHtml=`<div class="alert-meta">⚠️ SIN PROVEEDOR ASIGNADO</div>`;
     }
+    let pedidoInfo='';
+    if(nextP){
+      const nprov=proveedores.find(x=>x.id===nextP.provId);
+      const lleg=new Date(nextP.fecha+'T12:00:00');if(nprov)lleg.setDate(lleg.getDate()+nprov.dias);
+      pedidoInfo=` &nbsp;·&nbsp; PEDIDO EN CAMINO: +${Number(nextP.qty).toLocaleString()} KG (LLEGA ${fmtShort(lleg)})`;
+    }
+    const agotInfo=agot?` &nbsp;·&nbsp; <strong>SE AGOTA EN S${agot.semana} (${fmtShort(agot.fecha)})${nextP?' AUN CON EL PEDIDO':''}</strong>`:'';
     list.innerHTML+=`<div class="alert-box ${isOut?'alert-danger':'alert-warn'}">
-      <div class="alert-title"><i class="ti ti-${isOut?'alert-circle':'alert-triangle'}"></i>${isOut?'COMPRA URGENTE':'STOCK BAJO'} — ${d.nombre.toUpperCase()}</div>
-      <div class="alert-body">STOCK ACTUAL: ${Math.round(st).toLocaleString()} KG &nbsp;·&nbsp; CONSUMO PREVISTO: ${Math.round(d.kg).toLocaleString()} KG &nbsp;·&nbsp; RESTANTE: <strong>${Math.round(rest).toLocaleString()} KG</strong></div>
+      <div class="alert-title"><i class="ti ti-${isOut?'alert-circle':'alert-triangle'}"></i>${isOut?(nextP?'PEDIDO INSUFICIENTE':'COMPRA URGENTE'):'STOCK BAJO'} — ${d.nombre.toUpperCase()}</div>
+      <div class="alert-body">STOCK ACTUAL: ${Math.round(st).toLocaleString()} KG &nbsp;·&nbsp; CONSUMO PREVISTO: ${Math.round(d.kg).toLocaleString()} KG${pedidoInfo}${agotInfo}</div>
       ${deadlineHtml}
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid currentColor;border-top-color:rgba(0,0,0,0.1);">
         <button class="btn btn-dark" style="font-size:11px;padding:5px 12px;" onclick="openNuevoPedidoForMat('${id}')"><i class="ti ti-shopping-cart-plus"></i> Crear pedido</button>
@@ -1047,7 +1080,14 @@ function renderProvEdit(){
 
 function renderColorPicker(cid,selected,onSelect){
   const c=document.getElementById(cid);if(!c)return;c.innerHTML='';
-  for(const col of PROV_COLORS){const s=document.createElement('div');s.className=`csw${col===selected?' sel':''}`;s.style.background=col;s.onclick=()=>onSelect(col);c.appendChild(s);}
+  const sel=(selected||'').toUpperCase();
+  for(const col of PALETA){const s=document.createElement('div');s.className=`csw${col.toUpperCase()===sel?' sel':''}`;s.style.background=col;s.title=col;s.onclick=()=>onSelect(col);c.appendChild(s);}
+  // Selector libre (cuentagotas)
+  const lbl=document.createElement('label');lbl.className='csw-custom';lbl.title='Color personalizado';
+  const inp=document.createElement('input');inp.type='color';inp.value=(selected&&selected[0]==='#')?selected:'#185FA5';
+  inp.oninput=()=>onSelect(inp.value);
+  const ic=document.createElement('i');ic.className='ti ti-palette';
+  lbl.appendChild(inp);lbl.appendChild(ic);c.appendChild(lbl);
 }
 function toggleMat(mid){
   const p=proveedores.find(x=>x.id===activePID);if(!p)return;
