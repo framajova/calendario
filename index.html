@@ -61,7 +61,8 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 .btn-green:hover{background:#c0dd97;}
 .btn-danger{background:none;color:var(--danger-tx);border-color:var(--danger-bd);}
 .btn-danger:hover{background:var(--danger-bg);}
-.btn-del-sm{background:none;border:1px solid var(--danger-bd);padding:3px 7px;border-radius:var(--r);font-size:10px;cursor:pointer;color:var(--danger-tx);}
+.btn-del-sm{background:none;border:1px solid var(--danger-bd);padding:3px 8px;border-radius:var(--r);font-size:10px;cursor:pointer;color:var(--danger-tx);display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-family:var(--font);}
+.btn-del-sm:hover{background:var(--danger-bg);}
 .sec-title{font-size:10px;font-weight:600;letter-spacing:0.09em;color:var(--text2);margin-bottom:14px;}
 
 /* CALENDAR */
@@ -247,7 +248,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 .ing-table tr:last-child td{border-bottom:none;}
 .ing-table tr:hover td{background:var(--bg2);}
 .ing-inp{width:85px;font-size:11px;text-align:right;border:1.5px solid var(--border);border-radius:var(--r);padding:4px 7px;background:#fff;color:var(--text);font-family:var(--mono);}
-.ing-del{background:none;border:1.5px solid var(--border);color:var(--danger-bd);border-radius:var(--r);padding:3px 6px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;}
+.ing-del{background:none;border:1.5px solid var(--border);color:var(--danger-bd);border-radius:var(--r);padding:3px 8px;cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
 .ing-del:hover{background:var(--danger-bg);border-color:var(--danger-bd);}
 .add-ing{padding:12px 14px;border-top:1.5px solid var(--border);background:var(--accent-bg);}
 .add-ing-title{font-size:9px;font-weight:600;color:var(--accent);letter-spacing:0.06em;display:flex;align-items:center;gap:5px;margin-bottom:9px;}
@@ -338,7 +339,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 <div class="shell">
 
 <aside class="sidebar">
-  <div class="logo">Control de Compras<span>Materia Prima v5.5</span></div>
+  <div class="logo">Control de Compras<span>Materia Prima v5.6</span></div>
   <nav style="flex:1;padding-top:6px;">
     <div class="nav-item active" onclick="showTab('calendario',this)"><i class="ti ti-calendar"></i> Calendario</div>
     <div class="nav-item" onclick="showTab('stock',this)"><i class="ti ti-chart-bar"></i> Stock y consumo</div>
@@ -397,17 +398,18 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
       <div style="display:flex;align-items:center;gap:8px;margin:2px 0 14px;flex-wrap:wrap;">
         <span style="font-size:11px;font-weight:600;color:var(--text2);"><i class="ti ti-filter"></i> Ver componentes de:</span>
         <select id="stock-filter" onchange="setStockFiltroReceta(this.value)" style="font-size:12px;padding:7px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);min-width:260px;cursor:pointer;"></select>
+        <input id="stock-search" type="text" placeholder="🔍 Buscar componente…" oninput="renderStock()" style="font-size:12px;padding:7px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);min-width:220px;flex:1;">
       </div>
       <table class="data-table">
         <thead><tr>
-          <th style="width:26%">Materia prima</th>
-          <th style="width:11%">Stock (kg)</th>
-          <th style="width:12%">Consumo (kg)</th>
-          <th style="width:11%">Restante (kg)</th>
-          <th style="width:18%">Proveedor</th>
-          <th style="width:9%">Plazo</th>
-          <th style="width:11%">Estado</th>
-          <th style="width:2%"></th>
+          <th style="width:24%">Materia prima</th>
+          <th style="width:10%">Stock (kg)</th>
+          <th style="width:11%">Consumo (kg)</th>
+          <th style="width:10%">Restante (kg)</th>
+          <th style="width:16%">Proveedor</th>
+          <th style="width:8%">Plazo</th>
+          <th style="width:10%">Estado</th>
+          <th style="width:11%"></th>
         </tr></thead>
         <tbody id="mat-tbody"></tbody>
       </table>
@@ -884,7 +886,7 @@ function openSlot(w,sl){
 function renderSlotEntries(){
   const ents=ge(activeWK,activeSL);const el=document.getElementById('ms-entries');el.innerHTML='';
   if(!ents.length){el.innerHTML='<p style="font-size:10px;color:var(--text3)">SIN PRODUCTOS EN ESTA FILA.</p>';return;}
-  for(let i=0;i<ents.length;i++){const e=ents[i];const r=RECETAS.find(x=>x.id===e.rid);const masas=(e.t*kgPorTurno(e))/((r&&r.pesoMasa)||425);const row=document.createElement('div');row.className='entry-row';row.innerHTML=`<div><div class="entry-info">${r?r.nombre.toUpperCase():e.rid}</div><div class="entry-meta">${e.t} TURNOS · ${(e.v||VEL_DEF)} KG/H · ${masas.toFixed(1)} MASAS · ${Math.round(e.t*kgPorTurno(e)).toLocaleString()} KG</div></div><button class="btn-del-sm" onclick="delSlot(${i})"><i class="ti ti-trash"></i></button>`;el.appendChild(row);}
+  for(let i=0;i<ents.length;i++){const e=ents[i];const r=RECETAS.find(x=>x.id===e.rid);const masas=(e.t*kgPorTurno(e))/((r&&r.pesoMasa)||425);const row=document.createElement('div');row.className='entry-row';row.innerHTML=`<div><div class="entry-info">${r?r.nombre.toUpperCase():e.rid}</div><div class="entry-meta">${e.t} TURNOS · ${(e.v||VEL_DEF)} KG/H · ${masas.toFixed(1)} MASAS · ${Math.round(e.t*kgPorTurno(e)).toLocaleString()} KG</div></div><button class="btn-del-sm" onclick="delSlot(${i})"><i class="ti ti-trash"></i> Eliminar</button>`;el.appendChild(row);}
 }
 function delSlot(i){ge(activeWK,activeSL).splice(i,1);saveState();renderSlotEntries();renderCal();renderStock();}
 function addSlot(){const rid=document.getElementById('ms-product').value;const t=parseInt(document.getElementById('ms-turnos').value);const v=parseInt(document.getElementById('ms-vel').value)||VEL_DEF;if(!rid||!t)return;ge(activeWK,activeSL).push({rid,t,v});saveState();document.getElementById('ms-turnos').value=1;updPrev();renderSlotEntries();renderCal();renderStock();}
@@ -914,11 +916,13 @@ function renderStock(){
   }
   // Si hay filtro activo, restringir a los componentes de esa receta.
   const filtroIds=stockFiltroReceta?new Set((RECETAS.find(r=>r.id===stockFiltroReceta)||{ingredientes:[]}).ingredientes.map(i=>i.id)):null;
+  const busq=normStr(document.getElementById('stock-search')?document.getElementById('stock-search').value:''); // texto del buscador
   // Build full list: all ingredients in recipes + any extra stock imported
   const allIds=new Set([...Object.keys(allI),...Object.keys(stock).filter(k=>stock[k]>0)]);
   for(const id of allIds){
     if(filtroIds&&!filtroIds.has(id))continue; // filtro por fabricación seleccionada
     const nom=allI[id]||stockNombres[id]||id;
+    if(busq&&!normStr(nom).includes(busq))continue; // filtro por texto del buscador
     const cons=c[id]?c[id].kg:0;
     const st=stock[id]||0;
     // Skip if no stock and no consumption — nothing to show
@@ -935,7 +939,7 @@ function renderStock(){
     else{badge='badge-ok';estado='OK';}
     const provCell=prov?`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:${prov.color};display:inline-block;flex-shrink:0;"></span>${prov.nombre.toUpperCase()}</span>`:'<span style="color:var(--text3)">—</span>';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="font-family:var(--font)">${nom.toUpperCase()}</td><td>${st>0?Math.round(st).toLocaleString():'—'}</td><td>${cons>0?Math.round(cons).toLocaleString():'—'}</td><td style="font-weight:${rest<0?600:400};color:${rest<0?'var(--danger-tx)':'inherit'}">${cons>0?Math.round(rest).toLocaleString():'—'}</td><td style="font-family:var(--font)">${provCell}</td><td>${prov?prov.dias+'D':'—'}</td><td><span class="badge ${badge}">${estado}</span></td><td><button class="btn-del-sm" title="Eliminar materia prima" onclick="deleteMat('${id}','${nom.replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i></button></td>`;
+    tr.innerHTML=`<td style="font-family:var(--font)">${nom.toUpperCase()}</td><td>${st>0?Math.round(st).toLocaleString():'—'}</td><td>${cons>0?Math.round(cons).toLocaleString():'—'}</td><td style="font-weight:${rest<0?600:400};color:${rest<0?'var(--danger-tx)':'inherit'}">${cons>0?Math.round(rest).toLocaleString():'—'}</td><td style="font-family:var(--font)">${provCell}</td><td>${prov?prov.dias+'D':'—'}</td><td><span class="badge ${badge}">${estado}</span></td><td><button class="btn-del-sm" title="Eliminar materia prima" onclick="deleteMat('${id}','${nom.replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i> Eliminar</button></td>`;
     tb.appendChild(tr);
   }
   const nb=document.getElementById('alert-badge');nb.textContent=ac;nb.style.display=ac>0?'inline':'none';
@@ -1264,27 +1268,39 @@ function delReceta(){
 // deduplicado por nombre y ordenado.
 function listaComponentes(){
   const m={};
-  for(const r of RECETAS)for(const i of r.ingredientes){
-    const k=normStr(i.nombre);if(!k)continue;
-    if(!m[k])m[k]={nombre:String(i.nombre).toUpperCase(),cod:i.x||''};
-    else if(!m[k].cod&&i.x)m[k].cod=i.x;
-  }
+  const put=(nombre,cod,st)=>{
+    const k=normStr(nombre);if(!k)return;
+    if(!m[k])m[k]={nombre:String(nombre).toUpperCase(),cod:cod||'',stock:st||0};
+    else{if(!m[k].cod&&cod)m[k].cod=cod;if((st||0)>m[k].stock)m[k].stock=st||0;}
+  };
+  for(const r of RECETAS)for(const i of r.ingredientes)put(i.nombre,i.x||'',stock[i.id]||0);
   const allI=allIng();
   for(const id of Object.keys(stock)){
     const nom=stockNombres[id]||allI[id];if(!nom)continue;
-    const k=normStr(nom);if(!k)continue;
-    if(!m[k])m[k]={nombre:String(nom).toUpperCase(),cod:stockCodigos[id]||''};
-    else if(!m[k].cod&&stockCodigos[id])m[k].cod=stockCodigos[id];
+    put(nom,stockCodigos[id]||'',stock[id]||0);
   }
   return Object.values(m).sort((a,b)=>a.nombre.localeCompare(b.nombre));
 }
 function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-let _compCod={};
-// Al escribir/elegir un componente, si coincide con uno conocido, rellena su código.
+let _compCod={},_compStock={};
+// Al escribir/elegir un componente: si coincide con uno conocido, rellena su código
+// y muestra su stock; si no, indica que es un componente nuevo.
 function autofillCod(){
   const ni=document.getElementById('ni-nombre');if(!ni)return;
-  const cod=_compCod[normStr(ni.value)];
+  const k=normStr(ni.value);
+  const cod=_compCod[k];
   if(cod){const cc=document.getElementById('ni-cod');if(cc)cc.value=cod;}
+  const info=document.getElementById('ni-stock-info');if(!info)return;
+  if(k&&Object.prototype.hasOwnProperty.call(_compStock,k)){
+    const s=_compStock[k]||0;
+    info.innerHTML=`<i class="ti ti-database"></i> En stock: <strong>${Math.round(s).toLocaleString()}</strong>`;
+    info.style.color=s>0?'var(--ok-tx)':'var(--danger-tx)';
+    info.style.display='';
+  }else if(ni.value.trim()){
+    info.innerHTML=`<i class="ti ti-info-circle"></i> Componente nuevo (sin stock registrado)`;
+    info.style.color='var(--text3)';
+    info.style.display='';
+  }else{info.style.display='none';}
 }
 
 function renderEditor(){
@@ -1292,9 +1308,9 @@ function renderEditor(){
   if(!activeRID){ed.innerHTML='<p style="font-size:11px;color:var(--text3)">Selecciona una receta para editar.</p>';return;}
   const r=RECETAS.find(x=>x.id===activeRID);if(!r){ed.innerHTML='';return;}
   const comps=listaComponentes();
-  _compCod={};for(const co of comps)_compCod[normStr(co.nombre)]=co.cod;
+  _compCod={};_compStock={};for(const co of comps){_compCod[normStr(co.nombre)]=co.cod;_compStock[normStr(co.nombre)]=co.stock;}
   ed.innerHTML=`<div class="editor-wrap">
-    <div class="editor-head" style="${ehStyle(r.color)}"><div class="cdot" style="background:${colorHex(r.color)}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button><button class="gsm gsm-del" onclick="delReceta()" title="Eliminar receta"><i class="ti ti-trash"></i></button></div>
+    <div class="editor-head" style="${ehStyle(r.color)}"><div class="cdot" style="background:${colorHex(r.color)}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button><button class="gsm gsm-del" onclick="delReceta()" title="Eliminar receta"><i class="ti ti-trash"></i> Eliminar</button></div>
     <div class="color-row"><span class="color-row-lbl">COLOR:</span>${PALETA.map(c=>`<button class="color-chip${colorHex(r.color).toUpperCase()===c.toUpperCase()?' sel':''}" style="background:${c}" title="${c}" onclick="setRecetaColor('${c}')"></button>`).join('')}<label class="color-custom" title="Color personalizado"><input type="color" value="${colorHex(r.color)}" oninput="setRecetaColor(this.value)"><i class="ti ti-palette"></i></label></div>
     <div class="sim-box">
       <div class="sim-title"><i class="ti ti-calculator"></i> KG DE LA MASA (tamaño de lote)</div>
@@ -1304,8 +1320,8 @@ function renderEditor(){
       </div>
       <div class="sim-note" id="sim-note"></div>
     </div>
-    <table class="ing-table"><thead><tr><th style="width:34%">Ingrediente</th><th style="width:15%;text-align:right">KG/MASA actual</th><th style="width:17%;text-align:right">Nuevo valor</th><th style="width:20%;text-align:right">CONSUMO / TURNO</th><th style="width:6%"></th></tr></thead><tbody>
-    ${r.ingredientes.map((i,n)=>`<tr><td>${i.nombre.toUpperCase()}${i.x?` <span style="color:var(--text3);font-weight:400">[${i.x}]</span>`:''}</td><td style="text-align:right;color:var(--text3);font-family:var(--mono)">${i.kgMasa}</td><td style="text-align:right"><input class="ing-inp" id="ii${n}" type="number" step="0.001" min="0" value="${i.kgMasa}" oninput="markIng(${n})"></td><td style="text-align:right;font-family:var(--mono);font-weight:600" id="sc${n}">—</td><td style="text-align:center"><button class="ing-del" title="Eliminar componente" onclick="delIng(${n})"><i class="ti ti-trash"></i></button></td></tr>`).join('')}
+    <table class="ing-table"><thead><tr><th style="width:30%">Ingrediente</th><th style="width:14%;text-align:right">KG/MASA actual</th><th style="width:15%;text-align:right">Nuevo valor</th><th style="width:18%;text-align:right">CONSUMO / TURNO</th><th style="width:13%"></th></tr></thead><tbody>
+    ${r.ingredientes.map((i,n)=>`<tr><td>${i.nombre.toUpperCase()}${i.x?` <span style="color:var(--text3);font-weight:400">[${i.x}]</span>`:''}</td><td style="text-align:right;color:var(--text3);font-family:var(--mono)">${i.kgMasa}</td><td style="text-align:right"><input class="ing-inp" id="ii${n}" type="number" step="0.001" min="0" value="${i.kgMasa}" oninput="markIng(${n})"></td><td style="text-align:right;font-family:var(--mono);font-weight:600" id="sc${n}">—</td><td style="text-align:center"><button class="ing-del" title="Eliminar componente" onclick="delIng(${n})"><i class="ti ti-trash"></i> Eliminar</button></td></tr>`).join('')}
     </tbody></table>
     <div class="add-ing">
       <div class="add-ing-title"><i class="ti ti-plus"></i> AÑADIR COMPONENTE</div>
@@ -1316,6 +1332,7 @@ function renderEditor(){
         <button class="btn btn-dark" onclick="addIng()"><i class="ti ti-plus"></i> Añadir</button>
       </div>
       <datalist id="comp-datalist">${comps.map(co=>`<option value="${escAttr(co.nombre)}"${co.cod?` label="[${escAttr(co.cod)}]"`:''}></option>`).join('')}</datalist>
+      <div id="ni-stock-info" style="display:none;font-size:11px;margin-top:6px;"></div>
       <div class="add-ing-help">Empieza a escribir y elige un producto del stock: se rellenan el nombre y el código solos. El código (entre corchetes [ ] en el Excel) es lo que enlaza el componente con el stock al importar. Si lo escribes a mano y no aparece en la lista, ponlo igual que en el Excel.</div>
     </div>
     <div class="save-bar"><button class="btn btn-dark" onclick="saveKg()"><i class="ti ti-device-floppy"></i> Guardar KG/MASA</button><button class="btn btn-outline" onclick="renderEditor()"><i class="ti ti-refresh"></i> Restablecer</button><span class="saved-msg" id="sm"><i class="ti ti-circle-check"></i> GUARDADO</span></div>
@@ -1671,7 +1688,7 @@ function renderPedidos(){
         </div>
       </div>
       <button class="btn-del-sm" style="border-color:var(--border2);color:var(--text2);" onclick="editPedido('${p.id}')"><i class="ti ti-pencil"></i></button>
-      <button class="btn-del-sm" onclick="deletePedido('${p.id}')"><i class="ti ti-trash"></i></button>
+      <button class="btn-del-sm" onclick="deletePedido('${p.id}')"><i class="ti ti-trash"></i> Eliminar</button>
     `;
     list.appendChild(row);
   }
