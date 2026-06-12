@@ -210,6 +210,11 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 .rc-pink{background:var(--pink-bg);color:var(--pink-tx);border-left-color:var(--pink-bd);}
 .rc-name{font-size:10px;font-weight:600;letter-spacing:0.03em;}
 .rc-count{font-size:9px;margin-top:2px;opacity:0.65;}
+.card-ic{background:rgba(255,255,255,0.75);border:1px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer;color:var(--text2);display:inline-flex;align-items:center;font-size:12px;line-height:1;}
+.card-ic:hover{background:#fff;color:var(--text);}
+.card-ic.del{color:var(--danger-tx);border-color:var(--danger-bd);}
+.card-ic.del:hover{background:var(--danger-bg);}
+.card-actions{display:flex;justify-content:flex-end;gap:4px;margin-bottom:4px;}
 .editor-wrap{border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden;}
 .editor-head{padding:12px 14px;display:flex;align-items:center;gap:10px;}
 .eh-blue{background:#B5D4F4;color:var(--blue-tx);}
@@ -339,7 +344,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 <div class="shell">
 
 <aside class="sidebar">
-  <div class="logo">Control de Compras<span>Materia Prima v5.6</span></div>
+  <div class="logo">Control de Compras<span>Materia Prima v5.7</span></div>
   <nav style="flex:1;padding-top:6px;">
     <div class="nav-item active" onclick="showTab('calendario',this)"><i class="ti ti-calendar"></i> Calendario</div>
     <div class="nav-item" onclick="showTab('stock',this)"><i class="ti ti-chart-bar"></i> Stock y consumo</div>
@@ -402,14 +407,14 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
       </div>
       <table class="data-table">
         <thead><tr>
-          <th style="width:24%">Materia prima</th>
+          <th style="width:27%">Materia prima</th>
           <th style="width:10%">Stock (kg)</th>
           <th style="width:11%">Consumo (kg)</th>
           <th style="width:10%">Restante (kg)</th>
-          <th style="width:16%">Proveedor</th>
+          <th style="width:18%">Proveedor</th>
           <th style="width:8%">Plazo</th>
-          <th style="width:10%">Estado</th>
-          <th style="width:11%"></th>
+          <th style="width:11%">Estado</th>
+          <th style="width:5%"></th>
         </tr></thead>
         <tbody id="mat-tbody"></tbody>
       </table>
@@ -699,8 +704,35 @@ function applyState(s){
     }
   }
   if(typeof rebuildXMAP==='function')rebuildXMAP();
+  normalizaComponentes();
 }
-let _saveTimer=null;
+// Corrige materiales duplicados: el mismo producto físico dado de alta con dos
+// referencias internas distintas hacía que el import solo actualizara una y la otra
+// disparara alertas falsas. Aquí se unifican en una sola referencia (canónica) y se
+// fusiona su stock. Es idempotente: se puede ejecutar en cada carga sin efectos.
+const ALIAS_COMPONENTES={
+  margarina:'margarina_crema',      // misma MARGARINA CREMA (se actualiza con código [1015])
+  azucar_blanquilla:'azucar_bigbag' // mismo AZUCAR BLANQUILLA SACAROSA BIG BAG
+  // (el aceite de girasol del depósito se mantiene SEPARADO del [1006] a propósito)
+};
+function normalizaComponentes(){
+  // código x de cada id canónico (el primero que aparezca en las recetas)
+  const xDe={};
+  for(const r of RECETAS)for(const i of r.ingredientes){if(i.x&&!xDe[i.id])xDe[i.id]=i.x;}
+  // remapear los ingredientes duplicados a su id canónico
+  for(const r of RECETAS)for(const i of r.ingredientes){
+    const canon=ALIAS_COMPONENTES[i.id];
+    if(canon){i.id=canon;if(xDe[canon])i.x=xDe[canon];}
+  }
+  // fusionar stock/nombres/códigos: el valor bueno es el del canónico (lo actualiza el import)
+  for(const dup in ALIAS_COMPONENTES){
+    const canon=ALIAS_COMPONENTES[dup];
+    if(stock[dup]!=null){if(stock[canon]==null)stock[canon]=stock[dup];delete stock[dup];}
+    if(stockNombres&&stockNombres[dup])delete stockNombres[dup];
+    if(stockCodigos&&stockCodigos[dup]){if(!stockCodigos[canon])stockCodigos[canon]=stockCodigos[dup];delete stockCodigos[dup];}
+  }
+  if(typeof rebuildXMAP==='function')rebuildXMAP();
+}
 function saveState(){
   const s=collectState();
   try{localStorage.setItem(LS_STATE,JSON.stringify(s));}catch(e){}
@@ -886,7 +918,7 @@ function openSlot(w,sl){
 function renderSlotEntries(){
   const ents=ge(activeWK,activeSL);const el=document.getElementById('ms-entries');el.innerHTML='';
   if(!ents.length){el.innerHTML='<p style="font-size:10px;color:var(--text3)">SIN PRODUCTOS EN ESTA FILA.</p>';return;}
-  for(let i=0;i<ents.length;i++){const e=ents[i];const r=RECETAS.find(x=>x.id===e.rid);const masas=(e.t*kgPorTurno(e))/((r&&r.pesoMasa)||425);const row=document.createElement('div');row.className='entry-row';row.innerHTML=`<div><div class="entry-info">${r?r.nombre.toUpperCase():e.rid}</div><div class="entry-meta">${e.t} TURNOS · ${(e.v||VEL_DEF)} KG/H · ${masas.toFixed(1)} MASAS · ${Math.round(e.t*kgPorTurno(e)).toLocaleString()} KG</div></div><button class="btn-del-sm" onclick="delSlot(${i})"><i class="ti ti-trash"></i> Eliminar</button>`;el.appendChild(row);}
+  for(let i=0;i<ents.length;i++){const e=ents[i];const r=RECETAS.find(x=>x.id===e.rid);const masas=(e.t*kgPorTurno(e))/((r&&r.pesoMasa)||425);const row=document.createElement('div');row.className='entry-row';row.innerHTML=`<div><div class="entry-info">${r?r.nombre.toUpperCase():e.rid}</div><div class="entry-meta">${e.t} TURNOS · ${(e.v||VEL_DEF)} KG/H · ${masas.toFixed(1)} MASAS · ${Math.round(e.t*kgPorTurno(e)).toLocaleString()} KG</div></div><button class="btn-del-sm" title="Eliminar" onclick="delSlot(${i})"><i class="ti ti-trash"></i></button>`;el.appendChild(row);}
 }
 function delSlot(i){ge(activeWK,activeSL).splice(i,1);saveState();renderSlotEntries();renderCal();renderStock();}
 function addSlot(){const rid=document.getElementById('ms-product').value;const t=parseInt(document.getElementById('ms-turnos').value);const v=parseInt(document.getElementById('ms-vel').value)||VEL_DEF;if(!rid||!t)return;ge(activeWK,activeSL).push({rid,t,v});saveState();document.getElementById('ms-turnos').value=1;updPrev();renderSlotEntries();renderCal();renderStock();}
@@ -939,7 +971,7 @@ function renderStock(){
     else{badge='badge-ok';estado='OK';}
     const provCell=prov?`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:7px;height:7px;border-radius:50%;background:${prov.color};display:inline-block;flex-shrink:0;"></span>${prov.nombre.toUpperCase()}</span>`:'<span style="color:var(--text3)">—</span>';
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="font-family:var(--font)">${nom.toUpperCase()}</td><td>${st>0?Math.round(st).toLocaleString():'—'}</td><td>${cons>0?Math.round(cons).toLocaleString():'—'}</td><td style="font-weight:${rest<0?600:400};color:${rest<0?'var(--danger-tx)':'inherit'}">${cons>0?Math.round(rest).toLocaleString():'—'}</td><td style="font-family:var(--font)">${provCell}</td><td>${prov?prov.dias+'D':'—'}</td><td><span class="badge ${badge}">${estado}</span></td><td><button class="btn-del-sm" title="Eliminar materia prima" onclick="deleteMat('${id}','${nom.replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i> Eliminar</button></td>`;
+    tr.innerHTML=`<td style="font-family:var(--font)">${nom.toUpperCase()}</td><td>${st>0?Math.round(st).toLocaleString():'—'}</td><td>${cons>0?Math.round(cons).toLocaleString():'—'}</td><td style="font-weight:${rest<0?600:400};color:${rest<0?'var(--danger-tx)':'inherit'}">${cons>0?Math.round(rest).toLocaleString():'—'}</td><td style="font-family:var(--font)">${provCell}</td><td>${prov?prov.dias+'D':'—'}</td><td><span class="badge ${badge}">${estado}</span></td><td><button class="btn-del-sm" title="Eliminar materia prima" onclick="deleteMat('${id}','${nom.replace(/'/g,"\\'")}')"><i class="ti ti-trash"></i></button></td>`;
     tb.appendChild(tr);
   }
   const nb=document.getElementById('alert-badge');nb.textContent=ac;nb.style.display=ac>0?'inline':'none';
@@ -1066,7 +1098,7 @@ function renderAlerts(c){
     const agotInfo=agot?` &nbsp;·&nbsp; <strong>SE AGOTA EN S${agot.semana} (${fmtShort(agot.fecha)})${nextP?' AUN CON EL PEDIDO':''}</strong>`:'';
     list.innerHTML+=`<div class="alert-box ${isOut?'alert-danger':'alert-warn'}">
       <div class="alert-title"><i class="ti ti-${isOut?'alert-circle':'alert-triangle'}"></i>${isOut?(nextP?'PEDIDO INSUFICIENTE':'COMPRA URGENTE'):'STOCK BAJO'} — ${d.nombre.toUpperCase()}</div>
-      <div class="alert-body">STOCK ACTUAL: ${Math.round(st).toLocaleString()} KG &nbsp;·&nbsp; CONSUMO PREVISTO: ${Math.round(d.kg).toLocaleString()} KG${pedidoInfo}${agotInfo}</div>
+      <div class="alert-body">STOCK ACTUAL: ${Math.round(st).toLocaleString()} KG &nbsp;·&nbsp; CONSUMO PREVISTO: ${Math.round(d.kg).toLocaleString()} KG &nbsp;·&nbsp; ${rest<0?`<strong>FALTAN: ${Math.round(Math.abs(rest)).toLocaleString()} KG</strong>`:`RESTANTE: ${Math.round(rest).toLocaleString()} KG`}${pedidoInfo}${agotInfo}</div>
       ${deadlineHtml}
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid currentColor;border-top-color:rgba(0,0,0,0.1);">
         <button class="btn btn-dark" style="font-size:11px;padding:5px 12px;" onclick="openNuevoPedidoForMat('${id}')"><i class="ti ti-shopping-cart-plus"></i> Crear pedido</button>
@@ -1088,6 +1120,7 @@ function renderProvGrid(){
     card.innerHTML=`
       <div class="prov-band" style="background:${p.color}"></div>
       <div class="prov-body">
+        <div class="card-actions"><button class="card-ic" title="Editar" onclick="event.stopPropagation();abrirProv('${p.id}')"><i class="ti ti-pencil"></i></button><button class="card-ic del" title="Eliminar" onclick="event.stopPropagation();deleteProv('${p.id}')"><i class="ti ti-trash"></i></button></div>
         <div class="prov-name">${p.nombre.toUpperCase()}</div>
         <div class="prov-dias-row"><div class="prov-dias-num">${p.dias}</div><div class="prov-dias-label">DÍAS DE<br>SUMINISTRO</div></div>
         <div class="prov-mats-hdr">${p.materias.length} MATERIAS ASIGNADAS</div>
@@ -1178,6 +1211,7 @@ function saveProvEdit(){
   const d=parseInt(document.getElementById('pd-days').value);if(d>0)p.dias=d;
   saveState();flash('pd-saved');renderProvGrid();renderStock();
 }
+function abrirProv(id){activePID=id;renderProvGrid();renderProvEdit();}
 function deleteProv(id){
   if(!confirm('¿ELIMINAR ESTE PROVEEDOR?'))return;
   proveedores=proveedores.filter(p=>p.id!==id);
@@ -1199,7 +1233,7 @@ function saveProv(){
 
 function renderRecetaGrid(){
   const g=document.getElementById('receta-grid');g.innerHTML='';
-  for(const r of RECETAS){const c=document.createElement('div');c.className=`rc${activeRID===r.id?' active':''}`;c.style.cssText=rcStyle(r.color);c.innerHTML=`<div class="rc-name">${r.nombre.toUpperCase()}</div><div class="rc-count">${r.ingredientes.length} ING.</div>`;c.onclick=()=>{activeRID=r.id;renderRecetaGrid();renderEditor();};g.appendChild(c);}
+  for(const r of RECETAS){const c=document.createElement('div');c.className=`rc${activeRID===r.id?' active':''}`;c.style.cssText=rcStyle(r.color);c.innerHTML=`<div class="card-actions"><button class="card-ic" title="Editar" onclick="event.stopPropagation();abrirReceta('${r.id}')"><i class="ti ti-pencil"></i></button><button class="card-ic del" title="Eliminar" onclick="event.stopPropagation();delReceta('${r.id}')"><i class="ti ti-trash"></i></button></div><div class="rc-name">${r.nombre.toUpperCase()}</div><div class="rc-count">${r.ingredientes.length} ING.</div>`;c.onclick=()=>{activeRID=r.id;renderRecetaGrid();renderEditor();};g.appendChild(c);}
   const add=document.createElement('div');add.className='rc rc-new';add.innerHTML='<div class="rc-name"><i class="ti ti-plus"></i> NUEVA RECETA</div><div class="rc-count">crear desde cero</div>';add.onclick=addReceta;g.appendChild(add);
 }
 const RECETA_COLORS=['blue','teal','amber','coral','purple','green','pink'];
@@ -1254,12 +1288,14 @@ function setRecetaColor(c){
   saveState();renderRecetaGrid();renderEditor();renderCal();
 }
 // Eliminar la receta activa por completo
-function delReceta(){
-  const r=RECETAS.find(x=>x.id===activeRID);if(!r)return;
+function abrirReceta(id){activeRID=id;renderRecetaGrid();renderEditor();}
+function delReceta(id){
+  const rid=id||activeRID;
+  const r=RECETAS.find(x=>x.id===rid);if(!r)return;
   if(!confirm('¿Eliminar la receta "'+r.nombre+'" por completo? Esta acción no se puede deshacer.'))return;
-  const i=RECETAS.findIndex(x=>x.id===activeRID);
+  const i=RECETAS.findIndex(x=>x.id===rid);
   if(i>=0)RECETAS.splice(i,1);
-  activeRID=RECETAS.length?RECETAS[0].id:null;
+  if(activeRID===rid)activeRID=RECETAS.length?RECETAS[0].id:null;
   rebuildXMAP();
   saveState();renderRecetaGrid();renderEditor();renderCal();renderStock();
 }
@@ -1310,7 +1346,7 @@ function renderEditor(){
   const comps=listaComponentes();
   _compCod={};_compStock={};for(const co of comps){_compCod[normStr(co.nombre)]=co.cod;_compStock[normStr(co.nombre)]=co.stock;}
   ed.innerHTML=`<div class="editor-wrap">
-    <div class="editor-head" style="${ehStyle(r.color)}"><div class="cdot" style="background:${colorHex(r.color)}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button><button class="gsm gsm-del" onclick="delReceta()" title="Eliminar receta"><i class="ti ti-trash"></i> Eliminar</button></div>
+    <div class="editor-head" style="${ehStyle(r.color)}"><div class="cdot" style="background:${colorHex(r.color)}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button><button class="gsm gsm-del" onclick="delReceta()" title="Eliminar receta"><i class="ti ti-trash"></i></button></div>
     <div class="color-row"><span class="color-row-lbl">COLOR:</span>${PALETA.map(c=>`<button class="color-chip${colorHex(r.color).toUpperCase()===c.toUpperCase()?' sel':''}" style="background:${c}" title="${c}" onclick="setRecetaColor('${c}')"></button>`).join('')}<label class="color-custom" title="Color personalizado"><input type="color" value="${colorHex(r.color)}" oninput="setRecetaColor(this.value)"><i class="ti ti-palette"></i></label></div>
     <div class="sim-box">
       <div class="sim-title"><i class="ti ti-calculator"></i> KG DE LA MASA (tamaño de lote)</div>
@@ -1320,8 +1356,8 @@ function renderEditor(){
       </div>
       <div class="sim-note" id="sim-note"></div>
     </div>
-    <table class="ing-table"><thead><tr><th style="width:30%">Ingrediente</th><th style="width:14%;text-align:right">KG/MASA actual</th><th style="width:15%;text-align:right">Nuevo valor</th><th style="width:18%;text-align:right">CONSUMO / TURNO</th><th style="width:13%"></th></tr></thead><tbody>
-    ${r.ingredientes.map((i,n)=>`<tr><td>${i.nombre.toUpperCase()}${i.x?` <span style="color:var(--text3);font-weight:400">[${i.x}]</span>`:''}</td><td style="text-align:right;color:var(--text3);font-family:var(--mono)">${i.kgMasa}</td><td style="text-align:right"><input class="ing-inp" id="ii${n}" type="number" step="0.001" min="0" value="${i.kgMasa}" oninput="markIng(${n})"></td><td style="text-align:right;font-family:var(--mono);font-weight:600" id="sc${n}">—</td><td style="text-align:center"><button class="ing-del" title="Eliminar componente" onclick="delIng(${n})"><i class="ti ti-trash"></i> Eliminar</button></td></tr>`).join('')}
+    <table class="ing-table"><thead><tr><th style="width:34%">Ingrediente</th><th style="width:15%;text-align:right">KG/MASA actual</th><th style="width:17%;text-align:right">Nuevo valor</th><th style="width:20%;text-align:right">CONSUMO / TURNO</th><th style="width:6%"></th></tr></thead><tbody>
+    ${r.ingredientes.map((i,n)=>`<tr><td>${i.nombre.toUpperCase()}${i.x?` <span style="color:var(--text3);font-weight:400">[${i.x}]</span>`:''}</td><td style="text-align:right;color:var(--text3);font-family:var(--mono)">${i.kgMasa}</td><td style="text-align:right"><input class="ing-inp" id="ii${n}" type="number" step="0.001" min="0" value="${i.kgMasa}" oninput="markIng(${n})"></td><td style="text-align:right;font-family:var(--mono);font-weight:600" id="sc${n}">—</td><td style="text-align:center"><button class="ing-del" title="Eliminar componente" onclick="delIng(${n})"><i class="ti ti-trash"></i></button></td></tr>`).join('')}
     </tbody></table>
     <div class="add-ing">
       <div class="add-ing-title"><i class="ti ti-plus"></i> AÑADIR COMPONENTE</div>
@@ -1687,8 +1723,8 @@ function renderPedidos(){
           ${isVencido?`VENCIDO HACE ${Math.abs(daysToRec)} DÍA${Math.abs(daysToRec)!==1?'S':''}`:isProximo?`EN ${daysToRec} DÍA${daysToRec!==1?'S':''}`:'RECEPCIÓN EST.'}
         </div>
       </div>
-      <button class="btn-del-sm" style="border-color:var(--border2);color:var(--text2);" onclick="editPedido('${p.id}')"><i class="ti ti-pencil"></i></button>
-      <button class="btn-del-sm" onclick="deletePedido('${p.id}')"><i class="ti ti-trash"></i> Eliminar</button>
+      <button class="btn-del-sm" style="border-color:var(--border2);color:var(--text2);" title="Editar" onclick="editPedido('${p.id}')"><i class="ti ti-pencil"></i></button>
+      <button class="btn-del-sm" title="Eliminar" onclick="deletePedido('${p.id}')"><i class="ti ti-trash"></i></button>
     `;
     list.appendChild(row);
   }
@@ -1813,7 +1849,7 @@ function deletePedido(id){
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Carga el estado compartido desde el servidor (o respaldo local) y pinta todo.
-loadState().then(()=>{renderCal();renderStock();renderPedidos();}).catch(()=>{renderCal();renderStock();renderPedidos();});
+loadState().then(()=>{normalizaComponentes();renderCal();renderStock();renderPedidos();}).catch(()=>{normalizaComponentes();renderCal();renderStock();renderPedidos();});
 </script>
 </body>
 </html>
