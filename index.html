@@ -338,7 +338,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 <div class="shell">
 
 <aside class="sidebar">
-  <div class="logo">Control de Compras<span>Materia Prima v5.3</span></div>
+  <div class="logo">Control de Compras<span>Materia Prima v5.5</span></div>
   <nav style="flex:1;padding-top:6px;">
     <div class="nav-item active" onclick="showTab('calendario',this)"><i class="ti ti-calendar"></i> Calendario</div>
     <div class="nav-item" onclick="showTab('stock',this)"><i class="ti ti-chart-bar"></i> Stock y consumo</div>
@@ -346,6 +346,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
     <div class="nav-item" onclick="showTab('proveedores',this)"><i class="ti ti-truck"></i> Proveedores</div>
     <div class="nav-item" onclick="showTab('recetas',this)"><i class="ti ti-clipboard-list"></i> Recetas</div>
     <div class="nav-item" onclick="showTab('pedidos',this)"><i class="ti ti-shopping-cart"></i> Pedidos <span class="nav-badge-pedidos" id="pedidos-badge"></span></div>
+    <div class="nav-item" onclick="showTab('config',this)"><i class="ti ti-settings"></i> Configuración</div>
     <a href="recepciones.html" class="nav-item nav-link-ext" style="text-decoration:none;"><i class="ti ti-calendar-check"></i> Recepciones <i class="ti ti-external-link" style="margin-left:auto;font-size:13px;opacity:0.6;"></i></a>
   </nav>
   <div style="padding:14px 16px;font-size:9px;color:rgba(255,255,255,0.2);letter-spacing:0.05em;">2025</div>
@@ -393,6 +394,10 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
         </button>
       </div>
       <div class="stats-row" id="stats-row"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin:2px 0 14px;flex-wrap:wrap;">
+        <span style="font-size:11px;font-weight:600;color:var(--text2);"><i class="ti ti-filter"></i> Ver componentes de:</span>
+        <select id="stock-filter" onchange="setStockFiltroReceta(this.value)" style="font-size:12px;padding:7px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);min-width:260px;cursor:pointer;"></select>
+      </div>
       <table class="data-table">
         <thead><tr>
           <th style="width:26%">Materia prima</th>
@@ -439,6 +444,41 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
         </div>
         <div class="pedidos-stats" id="pedidos-stats"></div>
         <div id="pedidos-list"></div>
+      </div>
+    </div>
+
+    <div id="sec-config" class="section">
+      <div class="sec-title">Configuración de la importación de stock</div>
+      <div style="max-width:620px;">
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Categorías excluidas del inventario</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5;">
+            Al importar el stock, los productos cuya <strong>ubicación</strong> contenga alguna de estas palabras NO se añaden al inventario (p. ej. ropa, calzado, limpieza, mantenimiento).
+            Las materias de receta siempre se importan, aunque estén en estas ubicaciones.
+          </div>
+          <div id="cfg-cats" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;">
+            <input id="cfg-cat-input" type="text" placeholder="Añadir palabra (p. ej. EXPEDICION)" style="flex:1;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);text-transform:uppercase;" onkeydown="if(event.key==='Enter')addCat()">
+            <button class="btn btn-dark" onclick="addCat()"><i class="ti ti-plus"></i> Añadir</button>
+          </div>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input id="cfg-nc" type="checkbox" style="width:16px;height:16px;cursor:pointer;" onchange="toggleNC()">
+            <span>
+              <span style="font-size:12px;font-weight:600;">Excluir productos en ubicación "NO CONFORME"</span><br>
+              <span style="font-size:11px;color:var(--text2);">Si está marcado, esas filas se descartan al importar (recomendado).</span>
+            </span>
+          </label>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span id="cfg-saved" style="font-size:11px;color:var(--ok-tx);opacity:0;transition:opacity .3s;"><i class="ti ti-check"></i> Cambios guardados</span>
+          <button class="btn btn-outline" style="margin-left:auto;" onclick="resetConfig()"><i class="ti ti-rotate"></i> Restaurar valores por defecto</button>
+        </div>
+
       </div>
     </div>
 
@@ -565,8 +605,17 @@ const XMAP_EXACT={
   'ACEITE GIRASOL DEPOSITO':{id:'aceite', excelNombre:'ACEITE GIRASOL REFINADO DEPOSITTO 1.000L'},
   'EXBERRY':        {id:'exberry_yellow',  excelNombre:'EXBERRY SHADE BRIGHT YELLOW'},
 };
+
+// CONFIGURACIÓN editable desde la app (apartado "Configuración").
+// Se guarda en Supabase junto al resto del estado, así que los cambios se comparten.
+// - excluirCategorias: palabras clave de la columna "Ubicación" cuyos productos NO
+//   se importan al inventario (ropa/calzado, limpieza/químicos, mantenimiento…).
+//   Las materias de receta SIEMPRE se importan, aunque estén en estas ubicaciones.
+// - excluirNoConforme: si true, se descartan las filas en ubicación "NO CONFORME".
+const CONFIG_DEFAULT={excluirCategorias:['ROPA','CALZADO','QUIMIC','MANTENIMIENTO'],excluirNoConforme:true};
+let config=JSON.parse(JSON.stringify(CONFIG_DEFAULT));
 const SF={tostada_fb:14500,leche_desnatada:6422.66,azucar_pi:1076.48,azucar_sacos:14000,margarina:22338,cgel:0,margarina_crema:0,aceite_girasol:0,white_biscuit:8000,azucar_polvo:5760,azucar_blanquilla:5761,guar_gum:69.91,sal_fina:70.91,canela:15.17,harina:25440.67,almidon:6344.75,verol:1193.017,novamyl:1339.5,aceite:4111.45,azucar_bigbag:22295.76,trehalosa:1138.23,aroma_vainilla:277.91,aroma_mango:277.91,futurals_green:277.91,burnt_sugar:278.91,natural_brown:277.91,maracuya:277.91,fruitmax_red:277.91,futurals_yellow:277.91,exberry_yellow:277.91};
-let stock={...SF},stockDate=null,pending=null;
+let stock={...SF},stockNombres={},stockCodigos={},stockDate=null,pending=null;
 let pedidos=[]; // {id, provId, matId, qty, fecha(YYYY-MM-DD), notas}
 const LS_KEY='ccmp_pedidos'; // (compatibilidad; el guardado real es saveState)
 const HORAS=8;        // horas por turno
@@ -605,7 +654,7 @@ function sbHeaders(){return {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUP
 
 function collectState(){
   return {
-    stock, stockDate, prog, proveedores, pedidos,
+    stock, stockNombres, stockCodigos, stockDate, prog, proveedores, pedidos, config,
     recetas: RECETAS.map(r=>({id:r.id,nombre:r.nombre,color:r.color,pesoMasa:r.pesoMasa,
       ing:r.ingredientes.map(i=>({id:i.id,nombre:i.nombre,kgMasa:i.kgMasa,x:i.x||''}))}))
   };
@@ -613,6 +662,12 @@ function collectState(){
 function applyState(s){
   if(!s||typeof s!=='object')return;
   if(s.stock&&typeof s.stock==='object')stock=s.stock;
+  if(s.stockNombres&&typeof s.stockNombres==='object')stockNombres=s.stockNombres;
+  if(s.stockCodigos&&typeof s.stockCodigos==='object')stockCodigos=s.stockCodigos;
+  if(s.config&&typeof s.config==='object'){
+    if(Array.isArray(s.config.excluirCategorias))config.excluirCategorias=s.config.excluirCategorias.map(x=>String(x).toUpperCase());
+    if(typeof s.config.excluirNoConforme==='boolean')config.excluirNoConforme=s.config.excluirNoConforme;
+  }
   if('stockDate'in s)stockDate=s.stockDate;
   if(s.prog&&typeof s.prog==='object')prog=s.prog;
   if(Array.isArray(s.proveedores))proveedores=s.proveedores;
@@ -835,6 +890,9 @@ function delSlot(i){ge(activeWK,activeSL).splice(i,1);saveState();renderSlotEntr
 function addSlot(){const rid=document.getElementById('ms-product').value;const t=parseInt(document.getElementById('ms-turnos').value);const v=parseInt(document.getElementById('ms-vel').value)||VEL_DEF;if(!rid||!t)return;ge(activeWK,activeSL).push({rid,t,v});saveState();document.getElementById('ms-turnos').value=1;updPrev();renderSlotEntries();renderCal();renderStock();}
 function updPrev(){const t=parseInt(document.getElementById('ms-turnos').value)||0;const v=parseInt(document.getElementById('ms-vel').value)||VEL_DEF;const rid=document.getElementById('ms-product').value;const r=RECETAS.find(x=>x.id===rid);const pm=(r&&r.pesoMasa)||425;const kgT=t*HORAS*v;document.getElementById('ms-prev').textContent=`${t} TURNOS × ${HORAS} H × ${v} KG/H = ${kgT.toLocaleString()} KG ÷ ${pm.toLocaleString()} = ${(kgT/pm).toFixed(1)} MASAS`;}
 
+let stockFiltroReceta=''; // '' = todas; o id de receta para ver solo sus componentes
+function setStockFiltroReceta(v){stockFiltroReceta=v;renderStock();}
+
 function renderStock(){
   const ents=allMonth();const c=calcC(ents);
   const tt=ents.reduce((s,e)=>s+e.t,0);const kg=kgTotal(ents);let ac=0;
@@ -844,10 +902,23 @@ function renderStock(){
     <div class="stat-card"><div class="stat-label">Materias activas</div><div class="stat-value">${Object.keys(c).length}</div><div class="stat-sub">INGREDIENTES</div></div>
   `;
   const allI=allIng();const tb=document.getElementById('mat-tbody');tb.innerHTML='';
+  // Desplegable de fabricaciones: recetas programadas este mes (+ "Todas").
+  const ridsMes=[...new Set(ents.map(e=>e.rid))];
+  const recetasMes=ridsMes.map(id=>RECETAS.find(r=>r.id===id)).filter(Boolean).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(stockFiltroReceta && !ridsMes.includes(stockFiltroReceta))stockFiltroReceta=''; // si ya no está programada, vuelve a "Todas"
+  const sel=document.getElementById('stock-filter');
+  if(sel){
+    sel.innerHTML=`<option value="">Todas las fabricaciones (${recetasMes.length} programadas)</option>`+
+      recetasMes.map(r=>`<option value="${r.id}">${r.nombre.toUpperCase()}</option>`).join('');
+    sel.value=stockFiltroReceta;
+  }
+  // Si hay filtro activo, restringir a los componentes de esa receta.
+  const filtroIds=stockFiltroReceta?new Set((RECETAS.find(r=>r.id===stockFiltroReceta)||{ingredientes:[]}).ingredientes.map(i=>i.id)):null;
   // Build full list: all ingredients in recipes + any extra stock imported
   const allIds=new Set([...Object.keys(allI),...Object.keys(stock).filter(k=>stock[k]>0)]);
   for(const id of allIds){
-    const nom=allI[id]||id;
+    if(filtroIds&&!filtroIds.has(id))continue; // filtro por fabricación seleccionada
+    const nom=allI[id]||stockNombres[id]||id;
     const cons=c[id]?c[id].kg:0;
     const st=stock[id]||0;
     // Skip if no stock and no consumption — nothing to show
@@ -887,6 +958,7 @@ function renderStock(){
 function deleteMat(matId,matNom){
   if(!confirm(`¿ELIMINAR "${matNom.toUpperCase()}" DEL STOCK?\n\nSe eliminará de la lista de seguimiento pero no de las recetas.`))return;
   delete stock[matId];
+  delete stockNombres[matId];
   // Remove from SF so it doesn't come back on reset
   delete SF[matId];
   renderStock();
@@ -1187,10 +1259,40 @@ function delReceta(){
   rebuildXMAP();
   saveState();renderRecetaGrid();renderEditor();renderCal();renderStock();
 }
+// Lista de componentes conocidos para el autocompletado al crear recetas:
+// ingredientes de receta + productos importados del stock. Devuelve {nombre, cod}
+// deduplicado por nombre y ordenado.
+function listaComponentes(){
+  const m={};
+  for(const r of RECETAS)for(const i of r.ingredientes){
+    const k=normStr(i.nombre);if(!k)continue;
+    if(!m[k])m[k]={nombre:String(i.nombre).toUpperCase(),cod:i.x||''};
+    else if(!m[k].cod&&i.x)m[k].cod=i.x;
+  }
+  const allI=allIng();
+  for(const id of Object.keys(stock)){
+    const nom=stockNombres[id]||allI[id];if(!nom)continue;
+    const k=normStr(nom);if(!k)continue;
+    if(!m[k])m[k]={nombre:String(nom).toUpperCase(),cod:stockCodigos[id]||''};
+    else if(!m[k].cod&&stockCodigos[id])m[k].cod=stockCodigos[id];
+  }
+  return Object.values(m).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+}
+function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+let _compCod={};
+// Al escribir/elegir un componente, si coincide con uno conocido, rellena su código.
+function autofillCod(){
+  const ni=document.getElementById('ni-nombre');if(!ni)return;
+  const cod=_compCod[normStr(ni.value)];
+  if(cod){const cc=document.getElementById('ni-cod');if(cc)cc.value=cod;}
+}
+
 function renderEditor(){
   const ed=document.getElementById('receta-editor');
   if(!activeRID){ed.innerHTML='<p style="font-size:11px;color:var(--text3)">Selecciona una receta para editar.</p>';return;}
   const r=RECETAS.find(x=>x.id===activeRID);if(!r){ed.innerHTML='';return;}
+  const comps=listaComponentes();
+  _compCod={};for(const co of comps)_compCod[normStr(co.nombre)]=co.cod;
   ed.innerHTML=`<div class="editor-wrap">
     <div class="editor-head" style="${ehStyle(r.color)}"><div class="cdot" style="background:${colorHex(r.color)}"></div><input class="name-inp" id="rn" type="text" value="${r.nombre.toUpperCase()}"><button class="gsm" onclick="saveRN()"><i class="ti ti-check"></i> Guardar nombre</button><button class="gsm gsm-del" onclick="delReceta()" title="Eliminar receta"><i class="ti ti-trash"></i></button></div>
     <div class="color-row"><span class="color-row-lbl">COLOR:</span>${PALETA.map(c=>`<button class="color-chip${colorHex(r.color).toUpperCase()===c.toUpperCase()?' sel':''}" style="background:${c}" title="${c}" onclick="setRecetaColor('${c}')"></button>`).join('')}<label class="color-custom" title="Color personalizado"><input type="color" value="${colorHex(r.color)}" oninput="setRecetaColor(this.value)"><i class="ti ti-palette"></i></label></div>
@@ -1208,12 +1310,13 @@ function renderEditor(){
     <div class="add-ing">
       <div class="add-ing-title"><i class="ti ti-plus"></i> AÑADIR COMPONENTE</div>
       <div class="add-ing-row">
-        <input id="ni-nombre" type="text" placeholder="Nombre del componente (igual que en el Excel)">
+        <input id="ni-nombre" type="text" list="comp-datalist" autocomplete="off" placeholder="Escribe para buscar un producto del stock…" oninput="autofillCod()">
         <input id="ni-kg" type="number" step="0.001" min="0" placeholder="kg/masa">
         <input id="ni-cod" type="text" placeholder="Código Excel (ej. 1000)">
         <button class="btn btn-dark" onclick="addIng()"><i class="ti ti-plus"></i> Añadir</button>
       </div>
-      <div class="add-ing-help">El código es el que aparece entre corchetes [ ] en el Excel. Sin él, el componente no se actualizará al importar el stock.</div>
+      <datalist id="comp-datalist">${comps.map(co=>`<option value="${escAttr(co.nombre)}"${co.cod?` label="[${escAttr(co.cod)}]"`:''}></option>`).join('')}</datalist>
+      <div class="add-ing-help">Empieza a escribir y elige un producto del stock: se rellenan el nombre y el código solos. El código (entre corchetes [ ] en el Excel) es lo que enlaza el componente con el stock al importar. Si lo escribes a mano y no aparece en la lista, ponlo igual que en el Excel.</div>
     </div>
     <div class="save-bar"><button class="btn btn-dark" onclick="saveKg()"><i class="ti ti-device-floppy"></i> Guardar KG/MASA</button><button class="btn btn-outline" onclick="renderEditor()"><i class="ti ti-refresh"></i> Restablecer</button><span class="saved-msg" id="sm"><i class="ti ti-circle-check"></i> GUARDADO</span></div>
   </div>`;
@@ -1292,6 +1395,20 @@ function matchRow(nomExcel){
   return null; // no match — do not guess
 }
 
+// Para productos que NO están en ninguna receta: generar un id estable a partir
+// del código [XXXX] si existe, o del nombre normalizado. Prefijo "ext_" para no
+// chocar nunca con los ids internos de las materias de receta.
+function extId(nom){
+  const m=String(nom).match(/^\[([^\]]+)\]/);
+  if(m)return 'ext_'+normStr(m[1]).replace(/\s+/g,'_');
+  return 'ext_'+normStr(nom).replace(/\s+/g,'_').slice(0,48);
+}
+// Nombre limpio para mostrar: quita el prefijo de código [XXXX] si lo lleva.
+function cleanNombre(nom){
+  const s=String(nom).replace(/^\[[^\]]+\]\s*/,'').trim();
+  return s||String(nom).trim();
+}
+
 function handleImport(ev){
   const f=ev.target.files[0];if(!f)return;ev.target.value='';
   const rd=new FileReader();rd.onload=e=>{
@@ -1311,43 +1428,68 @@ function handleImport(ev){
       const uc=keys.find(k=>/ubicaci/i.test(k));     // para excluir NO CONFORME
       if(!nc||!qInv){alert('NO SE ENCONTRARON LAS COLUMNAS ESPERADAS.\nNecesario: columna de producto y de cantidad.');return;}
 
-      // Agregar por materia: sumar la cantidad inventariada de todos los lotes/ubicaciones
-      // del mismo producto (NO se resta reservado, no reservamos materia prima),
-      // excluir ubicaciones NO CONFORME, y quedarnos SOLO con las materias de las recetas.
-      const agg={};       // id receta -> {nombre, qty, filas}
-      let ignoradas=0;    // filas que no son materia de receta
-      let excluidasNC=0;  // filas excluidas por NO CONFORME
+      // Agregar por producto: sumar la cantidad inventariada de todos los lotes/
+      // ubicaciones del mismo producto (NO se resta reservado). Se importan TODOS
+      // los productos del stock, no solo las materias de receta. Se siguen aplicando
+      // los filtros de descarte: filas sin nombre y ubicaciones NO CONFORME.
+      const agg={};       // id -> {id, nombre, qty, filas, esReceta}
+      let excluidasNC=0;  // filas excluidas por el filtro NO CONFORME
+      let excluidasCat=0; // filas excluidas por categoría (ropa/calzado, limpieza, mantenimiento)
+      let sinNombre=0;    // filas sin nombre de producto
+      // Regex de categorías excluidas, construido desde la configuración editable.
+      const catWords=(config.excluirCategorias||[]).map(s=>String(s).trim()).filter(Boolean);
+      const catRe=catWords.length?new RegExp(catWords.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'i'):null;
       for(const row of rows){
         const nom=String(row[nc]||'').trim();
-        if(!nom)continue;
+        if(!nom){sinNombre++;continue;}                          // sin nombre -> fuera
         const ubic=uc?String(row[uc]||'').toUpperCase():'';
+        if(config.excluirNoConforme&&/NO\s*CONFORME/.test(ubic)){excluidasNC++;continue;} // filtro NO CONFORME (configurable)
+        const disp=num(row[qInv]);                               // cantidad inventariada (sin restar nada)
+        const cod=(String(nom).match(/^\[([^\]]+)\]/)||[])[1]||''; // código [XXXX] del nombre, si lo lleva
         const match=matchRow(nom);
-        if(!match){ignoradas++;continue;}                       // no es de receta -> fuera
-        if(/NO\s*CONFORME/.test(ubic)){excluidasNC++;continue;} // no apto -> fuera
-        const disp=num(row[qInv]);                              // cantidad inventariada (sin restar nada)
-        if(!agg[match.id])agg[match.id]={id:match.id,nombre:match.nombre,qty:0,filas:0};
-        agg[match.id].qty+=disp;
-        agg[match.id].filas++;
+        let id,nombre,esReceta;
+        if(match){ id=match.id; nombre=match.nombre; esReceta=true; }   // materia de receta (siempre se importa)
+        else {
+          // Producto que NO es de receta: descartar categorías excluidas en la config.
+          if(uc&&catRe&&catRe.test(ubic)){excluidasCat++;continue;}
+          id=extId(nom); nombre=cleanNombre(nom); esReceta=false;       // otro producto del stock
+        }
+        if(!agg[id])agg[id]={id,nombre,qty:0,filas:0,esReceta,cod:(cod||'').trim()};
+        else if(!agg[id].cod&&cod)agg[id].cod=cod.trim();
+        agg[id].qty+=disp;
+        agg[id].filas++;
       }
-      const matched=Object.values(agg).map(a=>({nom:a.nombre,qty:Math.max(0,a.qty),filas:a.filas,match:{id:a.id,nombre:a.nombre}}));
-      pending={matched,ignoradas,excluidasNC,totalFilas:rows.length};
+      const matched=Object.values(agg).map(a=>({nom:a.nombre,qty:Math.max(0,a.qty),filas:a.filas,esReceta:a.esReceta,cod:a.cod||'',match:{id:a.id,nombre:a.nombre}}));
+      const nReceta=matched.filter(m=>m.esReceta).length;
+      const nOtros=matched.filter(m=>!m.esReceta).length;
+      pending={matched,nReceta,nOtros,excluidasNC,excluidasCat,sinNombre,totalFilas:rows.length};
 
       // Build comparison table
-      if(!matched.length){alert('NO SE RECONOCIÓ NINGUNA MATERIA DE TUS RECETAS EN ESTE ARCHIVO.');return;}
-      matched.sort((a,b)=>a.match.nombre.localeCompare(b.match.nombre));
+      if(!matched.length){alert('NO SE ENCONTRÓ NINGÚN PRODUCTO IMPORTABLE EN ESTE ARCHIVO.');return;}
+      // Orden: primero materias de receta, luego el resto, cada grupo alfabético.
+      matched.sort((a,b)=>(a.esReceta===b.esReceta)?a.match.nombre.localeCompare(b.match.nombre):(a.esReceta?-1:1));
       document.getElementById('imp-summary').innerHTML=
         `<strong>${f.name}</strong> &nbsp;·&nbsp; ${pending.totalFilas} LÍNEAS EN EL EXCEL &nbsp;·&nbsp;
-         <span style="color:var(--ok-tx);font-weight:600">${matched.length} MATERIAS DE RECETA ACTUALIZADAS</span> &nbsp;·&nbsp;
-         <span style="color:var(--text3)">${pending.ignoradas} LÍNEAS IGNORADAS (NO SON DE RECETA)${pending.excluidasNC?` · ${pending.excluidasNC} EXCLUIDAS POR NO CONFORME`:''}</span>`;
+         <span style="color:var(--ok-tx);font-weight:600">${nReceta} MATERIAS DE RECETA</span> &nbsp;·&nbsp;
+         <span style="color:var(--accent,#5c77ff);font-weight:600">${nOtros} OTROS PRODUCTOS</span>${pending.excluidasNC?` &nbsp;·&nbsp; <span style="color:var(--text3)">${pending.excluidasNC} NO CONFORME</span>`:''}${pending.excluidasCat?` &nbsp;·&nbsp; <span style="color:var(--text3)">${pending.excluidasCat} EXCLUIDAS POR CATEGORÍA</span>`:''}`;
 
       const il=document.getElementById('imp-list');il.innerHTML='';
 
       // Show matched with before/after comparison
       const hdr=document.createElement('div');
       hdr.style.cssText='font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.07em;display:grid;grid-template-columns:1fr 80px 80px 60px;gap:6px;padding:6px 8px;border-bottom:1.5px solid var(--border);margin-top:8px;';
-      hdr.innerHTML='<span>MATERIA PRIMA</span><span style="text-align:right">STOCK ACTUAL</span><span style="text-align:right">STOCK NUEVO</span><span style="text-align:right">DIFERENCIA</span>';
+      hdr.innerHTML='<span>PRODUCTO</span><span style="text-align:right">STOCK ACTUAL</span><span style="text-align:right">STOCK NUEVO</span><span style="text-align:right">DIFERENCIA</span>';
       il.appendChild(hdr);
+      let grupoOtrosPuesto=false;
       for(const p of matched){
+        // Separador visual al empezar el grupo de "otros productos"
+        if(!p.esReceta&&!grupoOtrosPuesto){
+          grupoOtrosPuesto=true;
+          const sep=document.createElement('div');
+          sep.style.cssText='font-size:9px;font-weight:700;color:var(--accent,#5c77ff);letter-spacing:0.07em;padding:7px 8px 4px;border-top:1px dashed var(--border);margin-top:4px;';
+          sep.textContent='OTROS PRODUCTOS DEL STOCK (NO SON DE RECETA)';
+          il.appendChild(sep);
+        }
         const actual=stock[p.match.id]||0;
         const diff=p.qty-actual;
         const diffColor=diff>0?'var(--ok-tx)':diff<0?'var(--danger-tx)':'var(--text3)';
@@ -1375,6 +1517,8 @@ function applyImport(){
   let updated=0;
   for(const p of pending.matched){
     stock[p.match.id]=p.qty;
+    if(!p.esReceta)stockNombres[p.match.id]=p.match.nombre; // recordar nombre de productos que no son de receta
+    if(p.cod)stockCodigos[p.match.id]=p.cod;               // recordar código para enlazar al crear recetas
     updated++;
   }
   stockDate=new Date().toLocaleDateString('es-ES');
@@ -1382,19 +1526,50 @@ function applyImport(){
   closeModal('modal-import');
   const b=document.getElementById('stock-badge');
   b.className='stock-badge ok';
-  b.innerHTML=`<i class="ti ti-circle-check"></i> STOCK IMPORTADO EL ${stockDate} · ${updated} MATERIAS ACTUALIZADAS`;
+  b.innerHTML=`<i class="ti ti-circle-check"></i> STOCK IMPORTADO EL ${stockDate} · ${updated} PRODUCTOS ACTUALIZADOS`;
   renderStock();
 }
 
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function closeBg(id,e){if(e.target===document.getElementById(id))closeModal(id);}
 function changeMonth(d){vM+=d;if(vM>11){vM=0;vY++;}if(vM<0){vM=11;vY--;}renderCal();renderStock();}
+function renderConfig(){
+  const cats=document.getElementById('cfg-cats');
+  cats.innerHTML='';
+  if(!config.excluirCategorias.length){
+    cats.innerHTML='<span style="font-size:11px;color:var(--text3);">Sin categorías excluidas — se importará todo lo que no sea NO CONFORME.</span>';
+  }
+  config.excluirCategorias.forEach((c,i)=>{
+    const tag=document.createElement('span');
+    tag.style.cssText='display:inline-flex;align-items:center;gap:6px;background:var(--bg3);color:var(--text);border:1px solid var(--border2);border-radius:20px;padding:4px 6px 4px 12px;font-size:11px;font-weight:600;';
+    tag.innerHTML=`${c}<button title="Quitar" onclick="removeCat(${i})" style="border:0;background:transparent;color:var(--text3);cursor:pointer;display:inline-flex;align-items:center;padding:0;font-size:14px;line-height:1;">&times;</button>`;
+    cats.appendChild(tag);
+  });
+  document.getElementById('cfg-nc').checked=!!config.excluirNoConforme;
+}
+function cfgSaved(){const el=document.getElementById('cfg-saved');if(!el)return;el.style.opacity='1';clearTimeout(cfgSaved._t);cfgSaved._t=setTimeout(()=>el.style.opacity='0',1600);}
+function addCat(){
+  const inp=document.getElementById('cfg-cat-input');
+  const v=inp.value.trim().toUpperCase();
+  if(!v)return;
+  if(!config.excluirCategorias.includes(v))config.excluirCategorias.push(v);
+  inp.value='';
+  saveState();renderConfig();cfgSaved();
+}
+function removeCat(i){config.excluirCategorias.splice(i,1);saveState();renderConfig();cfgSaved();}
+function toggleNC(){config.excluirNoConforme=document.getElementById('cfg-nc').checked;saveState();cfgSaved();}
+function resetConfig(){
+  if(!confirm('¿Restaurar la configuración a los valores por defecto?'))return;
+  config=JSON.parse(JSON.stringify(CONFIG_DEFAULT));
+  saveState();renderConfig();cfgSaved();
+}
+
 function showTab(id,el){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById(`sec-${id}`).classList.add('active');
   el.classList.add('active');
-  const titles={calendario:'Calendario de programación',stock:'Stock y consumo previsto',alertas:'Alertas de compra',proveedores:'Gestión de proveedores',recetas:'Editor de recetas',pedidos:'Pedidos a proveedores'};
+  const titles={calendario:'Calendario de programación',stock:'Stock y consumo previsto',alertas:'Alertas de compra',proveedores:'Gestión de proveedores',recetas:'Editor de recetas',pedidos:'Pedidos a proveedores',config:'Configuración'};
   document.getElementById('topbar-title').textContent=titles[id]||'';
   document.getElementById('btn-import').style.display=id==='stock'?'inline-flex':'none';
   document.getElementById('btn-nuevo-pedido').style.display=id==='pedidos'?'inline-flex':'none';
@@ -1402,6 +1577,7 @@ function showTab(id,el){
   if(id==='proveedores'){renderProvGrid();renderProvEdit();}
   if(id==='recetas'){renderRecetaGrid();renderEditor();}
   if(id==='pedidos')renderPedidos();
+  if(id==='config')renderConfig();
 }
 
 // ── PEDIDOS ──────────────────────────────────────────────────────────────────
