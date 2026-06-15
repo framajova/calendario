@@ -344,7 +344,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 <div class="shell">
 
 <aside class="sidebar">
-  <div class="logo">Control de Compras<span>Materia Prima v5.8</span></div>
+  <div class="logo">Control de Compras<span>Materia Prima v5.9</span></div>
   <nav style="flex:1;padding-top:6px;">
     <div class="nav-item active" onclick="showTab('calendario',this)"><i class="ti ti-calendar"></i> Calendario</div>
     <div class="nav-item" onclick="showTab('stock',this)"><i class="ti ti-chart-bar"></i> Stock y consumo</div>
@@ -756,6 +756,7 @@ function normalizaComponentes(){
   for(const pv of proveedores)pv.materias=[...new Set((pv.materias||[]).map(m=>ALIAS_COMPONENTES[m]||m))];
   if(typeof rebuildXMAP==='function')rebuildXMAP();
 }
+let _saveTimer=null;
 function saveState(){
   const s=collectState();
   try{localStorage.setItem(LS_STATE,JSON.stringify(s));}catch(e){}
