@@ -344,7 +344,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 <div class="shell">
 
 <aside class="sidebar">
-  <div class="logo">Control de Compras<span>Materia Prima v5.7</span></div>
+  <div class="logo">Control de Compras<span>Materia Prima v5.8</span></div>
   <nav style="flex:1;padding-top:6px;">
     <div class="nav-item active" onclick="showTab('calendario',this)"><i class="ti ti-calendar"></i> Calendario</div>
     <div class="nav-item" onclick="showTab('stock',this)"><i class="ti ti-chart-bar"></i> Stock y consumo</div>
@@ -368,7 +368,11 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
       <button class="btn btn-dark" id="btn-nuevo-pedido" onclick="openNuevoPedido()" style="display:none">
         <i class="ti ti-plus"></i> Nuevo pedido
       </button>
+      <button class="btn btn-green" id="btn-import-prov" onclick="document.getElementById('file-input-prov').click()" style="display:none">
+        <i class="ti ti-file-spreadsheet"></i> Importar proveedores (.xlsx)
+      </button>
       <input type="file" id="file-input" accept=".xlsx" style="display:none" onchange="handleImport(event)">
+      <input type="file" id="file-input-prov" accept=".xlsx" style="display:none" onchange="handleImportProv(event)">
     </div>
   </div>
   <div class="content">
@@ -570,6 +574,23 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
   </div>
 </div>
 
+<!-- Modal import proveedores -->
+<div class="modal-bg" id="modal-import-prov" onclick="closeBg('modal-import-prov',event)">
+  <div class="modal" style="width:540px;">
+    <div class="modal-title">Importar proveedores</div>
+    <div id="impp-summary" style="font-size:10px;color:var(--text2);margin:8px 0;"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text2);margin:6px 0 10px;cursor:pointer;">
+      <input id="impp-borrar" type="checkbox" style="width:14px;height:14px;cursor:pointer;">
+      Borrar los proveedores actuales antes de importar (empezar de cero)
+    </label>
+    <div class="import-list" id="impp-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-import-prov')">Cancelar</button>
+      <button class="btn btn-dark" onclick="applyImportProv()"><i class="ti ti-check"></i> Aplicar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const RECETAS=[
@@ -731,6 +752,8 @@ function normalizaComponentes(){
     if(stockNombres&&stockNombres[dup])delete stockNombres[dup];
     if(stockCodigos&&stockCodigos[dup]){if(!stockCodigos[canon])stockCodigos[canon]=stockCodigos[dup];delete stockCodigos[dup];}
   }
+  // remapear también las materias asignadas a proveedores
+  for(const pv of proveedores)pv.materias=[...new Set((pv.materias||[]).map(m=>ALIAS_COMPONENTES[m]||m))];
   if(typeof rebuildXMAP==='function')rebuildXMAP();
 }
 function saveState(){
@@ -1201,7 +1224,7 @@ function renderColorPicker(cid,selected,onSelect){
 function toggleMat(mid){
   const p=proveedores.find(x=>x.id===activePID);if(!p)return;
   const chk=document.getElementById(`mc-${mid}`);if(!chk)return;
-  if(chk.checked){for(const op of proveedores)if(op.id!==p.id)op.materias=op.materias.filter(m=>m!==mid);if(!p.materias.includes(mid))p.materias.push(mid);}
+  if(chk.checked){if(!p.materias.includes(mid))p.materias.push(mid);} // se permite el mismo componente en varios proveedores
   else p.materias=p.materias.filter(m=>m!==mid);
   saveState();
 }
@@ -1583,6 +1606,80 @@ function applyImport(){
   renderStock();
 }
 
+// ===== Importación de proveedores =====
+// Resuelve nombre de producto -> id de materia, usando recetas + stock importado.
+function buildMatResolver(){
+  const map={};const allI=allIng();
+  for(const id in allI){const k=normStr(allI[id]);if(k&&!(k in map))map[k]=id;}
+  for(const id of Object.keys(stock)){
+    const nom=stockNombres[id]||allI[id];if(!nom)continue;
+    const k=normStr(nom);if(k&&!(k in map))map[k]=id;
+  }
+  return map;
+}
+let pendingProv=null;
+function handleImportProv(ev){
+  const f=ev.target.files[0];if(!f)return;ev.target.value='';
+  const rd=new FileReader();rd.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}); // filas como arrays (hay columnas PRODUCTO repetidas)
+      if(rows.length<2){alert('EL ARCHIVO ESTÁ VACÍO O NO TIENE PROVEEDORES.');return;}
+      const resolver=buildMatResolver();
+      const provs=[];
+      for(let i=1;i<rows.length;i++){
+        const row=rows[i];if(!row)continue;
+        const nombre=String(row[0]||'').trim();if(!nombre)continue;
+        const prods=row.slice(1).map(x=>String(x||'').trim()).filter(Boolean);
+        const matched=[],unmatched=[],ids=[];
+        for(const pr of prods){
+          const id=resolver[normStr(pr)];
+          if(id){if(!ids.includes(id))ids.push(id);matched.push(pr);}
+          else unmatched.push(pr);
+        }
+        provs.push({nombre,materias:ids,matched,unmatched,nProd:prods.length});
+      }
+      if(!provs.length){alert('NO SE ENCONTRÓ NINGÚN PROVEEDOR EN EL ARCHIVO.');return;}
+      pendingProv={provs};
+      const totProd=provs.reduce((a,p)=>a+p.nProd,0);
+      const totOk=provs.reduce((a,p)=>a+p.matched.length,0);
+      document.getElementById('impp-summary').innerHTML=`<strong>${f.name}</strong> &nbsp;·&nbsp; ${provs.length} PROVEEDORES &nbsp;·&nbsp; <span style="color:var(--ok-tx);font-weight:600">${totOk} PRODUCTOS ASOCIADOS</span>${totProd-totOk?` &nbsp;·&nbsp; <span style="color:var(--text3)">${totProd-totOk} SIN CASAR</span>`:''}`;
+      const il=document.getElementById('impp-list');il.innerHTML='';
+      for(const p of provs){
+        const existe=proveedores.some(x=>normStr(x.nombre)===normStr(p.nombre));
+        const div=document.createElement('div');div.style.cssText='padding:8px 6px;border-bottom:1px solid var(--border);';
+        div.innerHTML=`<div style="font-size:11px;font-weight:600;">${p.nombre} ${existe?'<span style="color:var(--accent,#5c77ff);font-weight:400;font-size:10px;">(se actualizará)</span>':'<span style="color:var(--ok-tx);font-weight:400;font-size:10px;">(nuevo)</span>'}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px;">${p.materias.length} materias asociadas${p.unmatched.length?` &nbsp;·&nbsp; <span style="color:var(--text3)">sin casar: ${p.unmatched.join(', ')}</span>`:''}</div>`;
+        il.appendChild(div);
+      }
+      document.getElementById('impp-borrar').checked=false;
+      document.getElementById('modal-import-prov').classList.add('open');
+    }catch(err){alert('ERROR AL LEER EL ARCHIVO: '+err.message);}
+  };
+  rd.readAsArrayBuffer(f);
+}
+function applyImportProv(){
+  if(!pendingProv)return;
+  if(document.getElementById('impp-borrar').checked)proveedores.length=0;
+  let creados=0,actualizados=0;
+  for(const p of pendingProv.provs){
+    const prov=proveedores.find(x=>normStr(x.nombre)===normStr(p.nombre));
+    if(prov){
+      for(const id of p.materias)if(!prov.materias.includes(id))prov.materias.push(id);
+      actualizados++;
+    }else{
+      proveedores.push({id:'prov_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),nombre:p.nombre,dias:7,color:PALETA[proveedores.length%PALETA.length],materias:[...p.materias]});
+      creados++;
+    }
+  }
+  saveState();
+  closeModal('modal-import-prov');
+  activePID=proveedores.length?proveedores[0].id:null;
+  renderProvGrid();renderProvEdit();renderStock();
+  alert(`Importación completada: ${creados} proveedores nuevos, ${actualizados} actualizados.`);
+}
+
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 function closeBg(id,e){if(e.target===document.getElementById(id))closeModal(id);}
 function changeMonth(d){vM+=d;if(vM>11){vM=0;vY++;}if(vM<0){vM=11;vY--;}renderCal();renderStock();}
@@ -1626,6 +1723,7 @@ function showTab(id,el){
   document.getElementById('topbar-title').textContent=titles[id]||'';
   document.getElementById('btn-import').style.display=id==='stock'?'inline-flex':'none';
   document.getElementById('btn-nuevo-pedido').style.display=id==='pedidos'?'inline-flex':'none';
+  document.getElementById('btn-import-prov').style.display=id==='proveedores'?'inline-flex':'none';
   if(id==='stock'||id==='alertas')renderStock();
   if(id==='proveedores'){renderProvGrid();renderProvEdit();}
   if(id==='recetas'){renderRecetaGrid();renderEditor();}
