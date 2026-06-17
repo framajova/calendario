@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #f0f2f5; min-height: 100vh; color: #1a1a1a; }
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; min-height: 100vh; color: #1a1a1a; overflow-x: hidden; }
 
         /* ── HEADER ── */
         .app-header {
@@ -224,6 +224,11 @@
         .fest-item-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
         .fest-item-date { font-weight: 700; color: #374151; white-space: nowrap; min-width: 54px; }
         .fest-item-name { flex: 1; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fest-item-act {
+            background: none; border: none; cursor: pointer; color: #ccc;
+            font-size: 14px; padding: 2px 5px; border-radius: 4px; transition: all 0.15s;
+        }
+        .fest-item-act:hover { background: #f3f4f6; color: #555; }
         .fest-item-del {
             background: none; border: none; cursor: pointer; color: #ccc;
             font-size: 14px; padding: 2px 5px; border-radius: 4px; transition: all 0.15s;
@@ -394,17 +399,84 @@
             padding: 3px 10px; border-radius: 20px;
         }
 
-        @media (max-width: 1100px) { .year-grid.view-12 { grid-template-columns: repeat(3, 1fr); } }
+        /* ═══ RESPONSIVE ═══ */
+
+        /* Pantallas grandes-medianas */
+        @media (max-width: 1100px) {
+            .year-grid.view-12 { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        /* Tablets */
         @media (max-width: 960px) {
             .ops-layout, .fest-layout { grid-template-columns: 1fr; }
             .page { padding: 16px; }
             .year-grid.view-3, .year-grid.view-6 { grid-template-columns: repeat(2, 1fr); }
             .year-grid.view-12 { grid-template-columns: repeat(2, 1fr); }
+            .op-list { max-height: 320px; }
         }
+
+        /* Tablets pequeñas / móvil grande — el header se reorganiza */
+        @media (max-width: 820px) {
+            .app-header {
+                flex-direction: column;
+                height: auto;
+                padding: 10px 16px;
+                gap: 10px;
+                position: static;
+            }
+            .app-header h1 { font-size: 16px; }
+            .nav-tabs { width: 100%; justify-content: center; }
+            .nav-tab { flex: 1; text-align: center; padding: 8px 10px; font-size: 13px; }
+            #headerYear { display: none; }
+            .year-grid.view-2, .year-grid.view-3, .year-grid.view-6, .year-grid.view-12 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Móvil */
         @media (max-width: 600px) {
-            .year-grid { grid-template-columns: 1fr !important; }
+            .page { padding: 12px; }
+            .year-grid { grid-template-columns: 1fr !important; gap: 14px; }
+
+            /* Toolbar del calendario apilada */
             .cal-toolbar { gap: 8px; }
+            .nav-label { min-width: 0; flex: 1; padding: 10px 12px; font-size: 14px; }
+            .tb-btn { padding: 9px 12px; font-size: 13px; }
+            .tb-sep { display: none; }
+            .tb-btn[data-view] { flex: 1; }
+
+            /* Meses del operario en una columna */
+            .months-grid { grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+            .fest-months-grid { grid-template-columns: 1fr; }
+
+            /* Modal a pantalla casi completa */
+            .modal { width: 100%; max-width: 100%; border-radius: 14px 14px 0 0; max-height: 88vh; }
+            .modal-backdrop { align-items: flex-end; }
+
+            /* Reducir tamaños grandes del calendario principal en móvil */
+            .main-dow-row, .main-days-row { grid-template-columns: 44px repeat(7, 1fr); }
+            .view-1 .main-dow, .view-2 .main-dow, .view-3 .main-dow,
+            .view-6 .main-dow, .view-12 .main-dow { font-size: 18px; padding: 6px 0; }
+            .view-1 .week-num, .view-2 .week-num, .view-3 .week-num,
+            .view-6 .week-num, .view-12 .week-num { font-size: 18px; }
+            .view-1 .dow-week-header, .view-2 .dow-week-header, .view-3 .dow-week-header,
+            .view-6 .dow-week-header, .view-12 .dow-week-header { font-size: 16px; }
+            .view-1 .day-header-num, .view-2 .day-header-num, .view-3 .day-header-num,
+            .view-6 .day-header-num, .view-12 .day-header-num { font-size: 13px; }
+
+            /* Panel operarios a ancho completo */
+            .op-list { max-height: none; }
         }
+
+        /* Móvil pequeño */
+        @media (max-width: 400px) {
+            .nav-tab { font-size: 12px; padding: 7px 6px; }
+            .app-header h1 { font-size: 15px; }
+            .months-grid { grid-template-columns: 1fr; }
+            .tb-btn { font-size: 12px; padding: 8px 10px; }
+            .main-dow-row, .main-days-row { grid-template-columns: 36px repeat(7, 1fr); }
+        }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -874,6 +946,49 @@ function eliminarFestivo(id) {
     renderCalendarioPrincipal();
 }
 
+function abrirModalEditarFestivo(id) {
+    const f = getFestivos(añoFest);
+    const item = f.lista.find(x => x.id === id);
+    if (!item) return;
+    editId = id;
+    modalMode = 'festivo';
+    const fechaStr = `${añoFest}-${String(item.mes+1).padStart(2,'0')}-${String(item.dia).padStart(2,'0')}`;
+    document.getElementById('modalTitulo').textContent = 'Editar festivo';
+    document.getElementById('modalBody').innerHTML = `
+        <div>
+            <div class="field-label">Nombre del festivo</div>
+            <input type="text" id="editFestNombre" value="${item.nombre.replace(/"/g,'&quot;')}">
+        </div>
+        <div>
+            <div class="field-label">Fecha</div>
+            <input type="date" id="editFestFecha" value="${fechaStr}" min="${añoFest}-01-01" max="${añoFest}-12-31" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:14px;font-family:inherit">
+        </div>`;
+    document.getElementById('modalBackdrop').classList.add('open');
+}
+
+function guardarEdicionFestivo() {
+    const f = getFestivos(añoFest);
+    const item = f.lista.find(x => x.id === editId);
+    if (!item) return;
+    const nombre = document.getElementById('editFestNombre').value.trim();
+    const fechaVal = document.getElementById('editFestFecha').value;
+    if (!nombre || !fechaVal) { alert('Indica nombre y fecha.'); return; }
+    const [yyyy, mm, dd] = fechaVal.split('-').map(Number);
+    if (yyyy !== añoFest) { alert(`La fecha debe ser del año ${añoFest}.`); return; }
+    // Comprobar que no choca con otro festivo distinto
+    if (f.lista.some(x => x.id !== editId && x.mes===mm-1 && x.dia===dd)) {
+        alert('Ya existe otro festivo ese día.'); return;
+    }
+    item.nombre = nombre;
+    item.mes = mm-1;
+    item.dia = dd;
+    f.lista.sort((a,b) => a.mes!==b.mes ? a.mes-b.mes : a.dia-b.dia);
+    setFestivos(añoFest, f);
+    cerrarModal();
+    renderFestivosPanel();
+    renderCalendarioPrincipal();
+}
+
 function renderFestivosPanel() {
     document.getElementById('festYearLabel').textContent = añoFest;
     const f = getFestivos(añoFest);
@@ -893,6 +1008,7 @@ function renderFestivosPanel() {
                 <div class="fest-item-dot" style="background:${f.color}"></div>
                 <span class="fest-item-date">${String(x.dia).padStart(2,'0')}/${String(x.mes+1).padStart(2,'0')}</span>
                 <span class="fest-item-name" title="${x.nombre}">${x.nombre}</span>
+                <button class="fest-item-act" onclick="abrirModalEditarFestivo('${x.id}')" title="Editar">✏️</button>
                 <button class="fest-item-del" onclick="eliminarFestivo('${x.id}')" title="Eliminar">✕</button>
             </div>`).join('');
     }
@@ -939,6 +1055,7 @@ function cerrarModalClick(e) { if(e.target===document.getElementById('modalBackd
 function guardarModal() {
     if(modalMode==='operario') guardarEdicionOperario();
     if(modalMode==='festColor') guardarColorFest();
+    if(modalMode==='festivo') guardarEdicionFestivo();
 }
 
 /* Modal operario */
