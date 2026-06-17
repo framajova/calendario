@@ -492,6 +492,7 @@
         <button class="nav-tab active" onclick="cambiarPagina('operarios',this)">👷 Operarios</button>
         <button class="nav-tab" onclick="cambiarPagina('calendario',this)">📆 Calendario</button>
         <button class="nav-tab" onclick="cambiarPagina('festivos',this)">🗓️ Festivos</button>
+        <button class="nav-tab" onclick="cambiarPagina('motivos',this)">🏷️ Motivos</button>
     </div>
     <span style="font-size:13px;color:#888;min-width:40px;text-align:right" id="headerYear"></span>
 </div>
@@ -599,6 +600,48 @@
     </div>
 </div>
 
+<!-- MOTIVOS -->
+<div id="page-motivos" class="page">
+    <div class="fest-layout">
+        <div>
+            <div class="panel">
+                <div class="panel-header">
+                    <span>🏷️ Motivos</span>
+                    <span style="font-size:12px;color:#888" id="motCounter"></span>
+                </div>
+                <div class="fest-year-selector">
+                    <button class="fest-year-btn" onclick="cambiarAñoMot(-1)">‹</button>
+                    <div class="fest-year-label" id="motYearLabel">2026</div>
+                    <button class="fest-year-btn" onclick="cambiarAñoMot(1)">›</button>
+                </div>
+                <!-- Formulario añadir motivo -->
+                <div class="fest-add-form">
+                    <div class="field-label">Añadir tipo de motivo</div>
+                    <input type="text" id="motInputNombre" placeholder="Ej. Baja, Permiso, Formación...">
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div class="fest-color-preview" id="motColorPreview" onclick="abrirModalMotColor()" title="Color del motivo" style="background:#0891b2"></div>
+                        <span style="font-size:12px;color:#888" id="motColorHex">#0891b2</span>
+                    </div>
+                    <button class="btn-add" onclick="agregarMotivo()" style="width:100%">＋ Añadir motivo</button>
+                </div>
+                <!-- Lista de motivos -->
+                <div class="fest-list" id="motList"></div>
+            </div>
+        </div>
+        <div class="panel">
+            <div style="padding:20px">
+                <h3 style="font-size:15px;font-weight:600;margin-bottom:8px">¿Cómo funcionan los motivos?</h3>
+                <p style="font-size:13px;color:#666;line-height:1.6">
+                    Aquí defines <strong>tipos de motivo</strong> (por ejemplo "Baja", "Permiso", "Formación") con su propio color, por cada año.<br><br>
+                    Después, en la ficha de cada operario (botón ✏️ en la pestaña Operarios), podrás <strong>asignarle un motivo en fechas concretas</strong>. Esos días aparecerán en el calendario con el color del motivo en lugar del color de vacaciones.<br><br>
+                    Los motivos <strong>no descuentan</strong> días de vacaciones.
+                </p>
+                <div id="motResumen" style="margin-top:20px"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const PRESETS = [
     '#3b82f6','#7c3aed','#0d9488','#ea580c','#db2777',
@@ -618,6 +661,9 @@ let añoVista   = HOY_AÑO;
 let mesVista   = HOY_MES;
 let vistaNum   = 1;
 let añoFest    = HOY_AÑO;  // año activo en panel festivos
+let añoMot     = HOY_AÑO;  // año activo en panel motivos
+let _motivosCache = {};    // { "2026": [ {id, nombre, color} ] }
+let motColorTmp = '#0891b2'; // color del nuevo motivo en el formulario
 
 // modalMode: 'operario' | 'festColor'
 let modalMode  = null;
@@ -707,6 +753,7 @@ function applyPreset(hex) {
     actualizarPickerUI();
     if(modalMode==='operario') actualizarPreviewModal();
     if(modalMode==='festColor') actualizarPreviewFest();
+    if(modalMode==='motColor') actualizarPreviewMot();
 }
 
 function actualizarPickerUI() {
@@ -721,7 +768,7 @@ function actualizarPickerUI() {
     thumb.style.background=pickerColor();
     const hex=pickerColor();
     document.getElementById('colorSwatch').style.background=hex;
-    const hi=document.getElementById('hexInputOp')||document.getElementById('hexInputFest');
+    const hi=document.getElementById('hexInputOp')||document.getElementById('hexInputFest')||document.getElementById('hexInputMot');
     if(hi) hi.value=hex;
 }
 
@@ -729,7 +776,7 @@ function actualizarPickerUI() {
 (function(){let drag=false;
     function onH(e){if(!drag)return;const r=document.getElementById('hueStrip');if(!r)return;
         const rect=r.getBoundingClientRect();pickerH=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width))*360;
-        actualizarPickerUI();if(modalMode==='operario')actualizarPreviewModal();if(modalMode==='festColor')actualizarPreviewFest();}
+        actualizarPickerUI();if(modalMode==='operario')actualizarPreviewModal();if(modalMode==='festColor')actualizarPreviewFest();if(modalMode==='motColor')actualizarPreviewMot();}
     document.addEventListener('mousedown',e=>{if(e.target.closest('#hueStrip')){drag=true;onH(e);}});
     document.addEventListener('mousemove',onH);document.addEventListener('mouseup',()=>drag=false);
     document.addEventListener('touchstart',e=>{if(e.target.closest('#hueStrip')){drag=true;onH(e.touches[0]);}},{passive:true});
@@ -743,7 +790,7 @@ function actualizarPickerUI() {
         const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
         const y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));
         pickerS=x;pickerL=(1-y)*(1-x/2);
-        actualizarPickerUI();if(modalMode==='operario')actualizarPreviewModal();if(modalMode==='festColor')actualizarPreviewFest();}
+        actualizarPickerUI();if(modalMode==='operario')actualizarPreviewModal();if(modalMode==='festColor')actualizarPreviewFest();if(modalMode==='motColor')actualizarPreviewMot();}
     document.addEventListener('mousedown',e=>{if(e.target.closest('#satLightGrid')){drag=true;onSL(e);}});
     document.addEventListener('mousemove',onSL);document.addEventListener('mouseup',()=>drag=false);
     document.addEventListener('touchstart',e=>{if(e.target.closest('#satLightGrid')){drag=true;onSL(e.touches[0]);}},{passive:true});
@@ -762,12 +809,11 @@ const SB_HEADERS = {
     'Content-Type': 'application/json'
 };
 
-let _festivosCache = {};
 let _guardarTimer = null;
 
 async function guardar() {
     // Backup local inmediato
-    localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache }));
+    localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache, motivos: _motivosCache }));
     // Guardado al servidor con pequeño retardo para agrupar cambios rápidos
     clearTimeout(_guardarTimer);
     _guardarTimer = setTimeout(guardarAhora, 400);
@@ -778,7 +824,7 @@ async function guardarAhora() {
         const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLA}?id=eq.${FILA_ID}`, {
             method: 'PATCH',
             headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-            body: JSON.stringify({ contenido: { operarios, festivos: _festivosCache } })
+            body: JSON.stringify({ contenido: { operarios, festivos: _festivosCache, motivos: _motivosCache } })
         });
         if (!r.ok) console.error('Error guardando en Supabase:', r.status, await r.text());
     } catch(e) { console.error('Error de conexión al guardar:', e); }
@@ -795,7 +841,8 @@ async function cargar() {
             const c = (filas[0] && filas[0].contenido) || {};
             operarios = c.operarios || [];
             _festivosCache = c.festivos || {};
-            localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache }));
+            _motivosCache = c.motivos || {};
+            localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache, motivos: _motivosCache }));
         } else {
             console.error('Error cargando de Supabase:', r.status);
             usarBackupLocal();
@@ -805,16 +852,17 @@ async function cargar() {
         usarBackupLocal();
     }
     mostrarCargando(false);
-    añoVista=HOY_AÑO; mesVista=HOY_MES; añoFest=HOY_AÑO;
+    añoVista=HOY_AÑO; mesVista=HOY_MES; añoFest=HOY_AÑO; añoMot=HOY_AÑO;
     actualizarNavLabel();
     renderFestivosPanel();
+    renderMotivosPanel();
     renderTodo();
 }
 
 function usarBackupLocal() {
     try {
         const d = localStorage.getItem('vac_backup');
-        if (d) { const p = JSON.parse(d); operarios = p.operarios||[]; _festivosCache = p.festivos||{}; }
+        if (d) { const p = JSON.parse(d); operarios = p.operarios||[]; _festivosCache = p.festivos||{}; _motivosCache = p.motivos||{}; }
     } catch(e) {}
 }
 
@@ -869,15 +917,16 @@ function cambiarPagina(id,btn) {
     btn.classList.add('active');
     if(id==='calendario') renderCalendarioPrincipal();
     if(id==='festivos') renderFestivosPanel();
+    if(id==='motivos') renderMotivosPanel();
 }
 
 // ── OPERARIOS ─────────────────────────────────────────────────
 function agregarOperario() {
     const input=document.getElementById('inputNombre');
     const nombre=input.value.trim(); if(!nombre) return;
-    const iniciales=nombre.split(' ').map(p=>p[0]).join('').toUpperCase().substring(0,3);
+    const iniciales=nombre.split(' ').map(p=>p[0]).join('').toUpperCase().substring(0,4);
     const cols=['#3b82f6','#7c3aed','#0d9488','#ea580c','#db2777','#16a34a','#d97706','#dc2626','#4f46e5','#0891b2'];
-    operarios.push({id:Date.now().toString(),nombre,iniciales,color:cols[operarios.length%cols.length],maxDias:22,vacaciones:{}});
+    operarios.push({id:Date.now().toString(),nombre,iniciales,color:cols[operarios.length%cols.length],maxDias:22,vacaciones:{},motivos:{},notas:''});
     guardar(); input.value=''; renderTodo();
 }
 function eliminarOperario(id) {
@@ -1056,6 +1105,8 @@ function guardarModal() {
     if(modalMode==='operario') guardarEdicionOperario();
     if(modalMode==='festColor') guardarColorFest();
     if(modalMode==='festivo') guardarEdicionFestivo();
+    if(modalMode==='motColor') guardarColorMot();
+    if(modalMode==='motEdit') guardarEdicionMotivo();
 }
 
 /* Modal operario */
@@ -1075,20 +1126,101 @@ function abrirModal(id) {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div><div class="field-label">Nombre</div><input type="text" id="editNombre" value="${op.nombre}"></div>
-            <div><div class="field-label">Iniciales (máx. 3)</div><input type="text" id="editIniciales" value="${op.iniciales}" maxlength="3" style="text-transform:uppercase"></div>
+            <div><div class="field-label">Iniciales (máx. 4)</div><input type="text" id="editIniciales" value="${op.iniciales}" maxlength="4" style="text-transform:uppercase"></div>
         </div>
         <div><div class="field-label">Días máximos al año</div><input type="number" id="editMaxDias" value="${op.maxDias||22}" min="0" max="366"></div>
-        <div><div class="field-label">Color identificativo</div>${renderPickerHTML('modalPreview','hexInputOp')}</div>`;
+        <div><div class="field-label">Notas</div><textarea id="editNotas" placeholder="Notas sobre el operario..." style="width:100%;min-height:70px;padding:9px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:14px;font-family:inherit;resize:vertical">${(op.notas||'').replace(/</g,'&lt;')}</textarea></div>
+        <div><div class="field-label">Color identificativo</div>${renderPickerHTML('modalPreview','hexInputOp')}</div>
+        <div id="motivosOperarioSeccion"></div>`;
     document.getElementById('editNombre').oninput=actualizarPreviewModal;
     document.getElementById('editIniciales').oninput=actualizarPreviewModal;
     initPicker('hexInputOp', actualizarPreviewModal);
     actualizarPreviewModal();
+    renderMotivosOperario(op);
     document.getElementById('modalBackdrop').classList.add('open');
 }
 
+// Sección de motivos dentro del modal del operario (usa añoVista)
+function renderMotivosOperario(op) {
+    const cont = document.getElementById('motivosOperarioSeccion');
+    if (!cont) return;
+    const motivosAño = getMotivos(añoVista);
+
+    if (motivosAño.length === 0) {
+        cont.innerHTML = `<div class="field-label">Motivos especiales (${añoVista})</div>
+            <p style="font-size:12px;color:#aaa">No hay motivos definidos para ${añoVista}. Créalos en la pestaña "Motivos".</p>`;
+        return;
+    }
+
+    // Asignaciones actuales del operario en añoVista
+    let asignaciones = [];
+    Object.entries(op.motivos||{}).forEach(([k, arr]) => {
+        if (!k.startsWith(añoVista+'_')) return;
+        const mes = parseInt(k.split('_')[1]);
+        (arr||[]).forEach(a => asignaciones.push({ mes, dia: a.dia, motivoId: a.motivoId }));
+    });
+    asignaciones.sort((a,b) => a.mes!==b.mes ? a.mes-b.mes : a.dia-b.dia);
+
+    const opcionesMot = motivosAño.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    const listaHtml = asignaciones.length === 0
+        ? '<p style="font-size:12px;color:#aaa;padding:6px 0">Sin motivos asignados</p>'
+        : asignaciones.map(a => {
+            const m = getMotivoById(añoVista, a.motivoId);
+            if (!m) return '';
+            return `<div class="fest-item" style="padding:6px 8px">
+                <div class="fest-item-dot" style="background:${m.color}"></div>
+                <span class="fest-item-date">${String(a.dia).padStart(2,'0')}/${String(a.mes+1).padStart(2,'0')}</span>
+                <span class="fest-item-name">${m.nombre}</span>
+                <button class="fest-item-del" onclick="quitarMotivoOperario(${a.mes},${a.dia},'${a.motivoId}')" title="Quitar">✕</button>
+            </div>`;
+        }).join('');
+
+    cont.innerHTML = `
+        <div class="field-label">Motivos especiales (${añoVista})</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input type="date" id="motOpFecha" min="${añoVista}-01-01" max="${añoVista}-12-31" value="${añoVista}-01-01"
+                style="padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit">
+            <select id="motOpSelect" style="flex:1;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;background:white">${opcionesMot}</select>
+            <button class="btn-add" onclick="asignarMotivoOperario()" style="padding:8px 14px">＋</button>
+        </div>
+        <div class="fest-list" style="max-height:150px;padding:0">${listaHtml}</div>`;
+}
+
+function asignarMotivoOperario() {
+    const op = operarios.find(o => o.id === editId); if (!op) return;
+    const fechaVal = document.getElementById('motOpFecha').value;
+    const motivoId = document.getElementById('motOpSelect').value;
+    if (!fechaVal || !motivoId) return;
+    const [yyyy, mm, dd] = fechaVal.split('-').map(Number);
+    if (yyyy !== añoVista) { alert(`La fecha debe ser del año ${añoVista}.`); return; }
+    if (!op.motivos) op.motivos = {};
+    const k = añoVista + '_' + (mm-1);
+    const arr = op.motivos[k] ? [...op.motivos[k]] : [];
+    // Si ya hay un motivo ese día, lo reemplaza
+    const idx = arr.findIndex(a => a.dia === dd);
+    if (idx > -1) arr[idx] = { dia: dd, motivoId };
+    else arr.push({ dia: dd, motivoId });
+    op.motivos[k] = arr.sort((a,b) => a.dia - b.dia);
+    guardar();
+    renderMotivosOperario(op);
+    renderTodo();
+}
+
+function quitarMotivoOperario(mes, dia, motivoId) {
+    const op = operarios.find(o => o.id === editId); if (!op) return;
+    const k = añoVista + '_' + mes;
+    if (op.motivos && op.motivos[k]) {
+        op.motivos[k] = op.motivos[k].filter(a => !(a.dia === dia && a.motivoId === motivoId));
+        if (op.motivos[k].length === 0) delete op.motivos[k];
+    }
+    guardar();
+    renderMotivosOperario(op);
+    renderTodo();
+}
+
 function actualizarPreviewModal() {
-    const ini=(document.getElementById('editIniciales')?.value.trim().toUpperCase().substring(0,3))||
-        document.getElementById('editNombre')?.value.trim().split(' ').map(p=>p[0]).join('').toUpperCase().substring(0,3)||'?';
+    const ini=(document.getElementById('editIniciales')?.value.trim().toUpperCase().substring(0,4))||
+        document.getElementById('editNombre')?.value.trim().split(' ').map(p=>p[0]).join('').toUpperCase().substring(0,4)||'?';
     const prev=document.getElementById('modalPreview');
     if(prev){prev.textContent=ini;prev.style.background=pickerColor();}
     const pn=document.getElementById('previewNombre');
@@ -1098,10 +1230,11 @@ function actualizarPreviewModal() {
 function guardarEdicionOperario() {
     const op=operarios.find(o=>o.id===editId); if(!op) return;
     const nombre=document.getElementById('editNombre').value.trim();
-    const iniciales=document.getElementById('editIniciales').value.trim().toUpperCase().substring(0,3);
+    const iniciales=document.getElementById('editIniciales').value.trim().toUpperCase().substring(0,4);
     const maxDias=parseInt(document.getElementById('editMaxDias').value)||22;
     if(!nombre||!iniciales){alert('Nombre e iniciales son obligatorios.');return;}
     op.nombre=nombre;op.iniciales=iniciales;op.maxDias=maxDias;op.color=pickerColor();
+    op.notas=document.getElementById('editNotas').value.trim();
     guardar();cerrarModal();renderTodo();
 }
 
@@ -1138,6 +1271,146 @@ function guardarColorFest() {
     cerrarModal();
     renderFestivosPanel();
     renderCalendarioPrincipal();
+}
+
+// ── MOTIVOS (tipos por año) ───────────────────────────────────
+function getMotivos(año) { return _motivosCache[año] || []; }
+function setMotivos(año, lista) { _motivosCache[año] = lista; guardar(); }
+function getMotivoById(año, id) { return getMotivos(año).find(m => m.id === id); }
+
+function cambiarAñoMot(delta) {
+    añoMot += delta;
+    renderMotivosPanel();
+}
+
+function abrirModalMotColor() {
+    modalMode = 'motColor';
+    const [h,s,l] = hexToHsl(motColorTmp || '#0891b2');
+    pickerH=h; pickerS=s; pickerL=l;
+    document.getElementById('modalTitulo').textContent = 'Color del motivo';
+    document.getElementById('modalBody').innerHTML = `
+        <div class="preview-row">
+            <div style="width:56px;height:56px;border-radius:10px;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.15)" id="motColorSquare"></div>
+            <div><div style="font-size:15px;font-weight:600">Color del motivo</div>
+            <div style="font-size:12px;color:#888;margin-top:3px">Se usará en el calendario</div></div>
+        </div>
+        <div><div class="field-label">Color</div>${renderPickerHTML('motColorSquare','hexInputMot')}</div>`;
+    initPicker('hexInputMot', actualizarPreviewMot);
+    actualizarPreviewMot();
+    document.getElementById('modalBackdrop').classList.add('open');
+}
+
+function actualizarPreviewMot() {
+    const sq=document.getElementById('motColorSquare');
+    if(sq) sq.style.background=pickerColor();
+}
+
+function guardarColorMot() {
+    motColorTmp = pickerColor();
+    document.getElementById('motColorPreview').style.background = motColorTmp;
+    document.getElementById('motColorHex').textContent = motColorTmp;
+    cerrarModal();
+}
+
+function agregarMotivo() {
+    const nombreEl = document.getElementById('motInputNombre');
+    const nombre = nombreEl.value.trim();
+    if (!nombre) { alert('Indica el nombre del motivo.'); return; }
+    const lista = getMotivos(añoMot);
+    if (lista.some(m => m.nombre.toLowerCase() === nombre.toLowerCase())) { alert('Ya existe ese motivo.'); return; }
+    lista.push({ id: Date.now().toString(), nombre, color: motColorTmp });
+    setMotivos(añoMot, lista);
+    nombreEl.value = '';
+    renderMotivosPanel();
+}
+
+function eliminarMotivo(id) {
+    if (!confirm('¿Eliminar este motivo? Se quitará también de los operarios que lo tengan asignado este año.')) return;
+    let lista = getMotivos(añoMot);
+    lista = lista.filter(m => m.id !== id);
+    setMotivos(añoMot, lista);
+    // Quitar asignaciones de este motivo en los operarios para este año
+    operarios.forEach(op => {
+        if (!op.motivos) return;
+        Object.keys(op.motivos).forEach(k => {
+            if (k.startsWith(añoMot + '_')) {
+                op.motivos[k] = (op.motivos[k]||[]).filter(asig => asig.motivoId !== id);
+                if (op.motivos[k].length === 0) delete op.motivos[k];
+            }
+        });
+    });
+    guardar();
+    renderMotivosPanel();
+    renderTodo();
+}
+
+function abrirModalEditarMotivo(id) {
+    const mot = getMotivoById(añoMot, id);
+    if (!mot) return;
+    editId = id;
+    modalMode = 'motEdit';
+    const [h,s,l] = hexToHsl(mot.color);
+    pickerH=h; pickerS=s; pickerL=l;
+    document.getElementById('modalTitulo').textContent = 'Editar motivo';
+    document.getElementById('modalBody').innerHTML = `
+        <div><div class="field-label">Nombre</div><input type="text" id="editMotNombre" value="${mot.nombre.replace(/"/g,'&quot;')}"></div>
+        <div><div class="field-label">Color</div>${renderPickerHTML('x','hexInputMot')}</div>`;
+    initPicker('hexInputMot', null);
+    document.getElementById('modalBackdrop').classList.add('open');
+}
+
+function guardarEdicionMotivo() {
+    const mot = getMotivoById(añoMot, editId);
+    if (!mot) return;
+    const nombre = document.getElementById('editMotNombre').value.trim();
+    if (!nombre) { alert('El nombre es obligatorio.'); return; }
+    mot.nombre = nombre;
+    mot.color = pickerColor();
+    setMotivos(añoMot, getMotivos(añoMot));
+    cerrarModal();
+    renderMotivosPanel();
+    renderTodo();
+}
+
+function renderMotivosPanel() {
+    document.getElementById('motYearLabel').textContent = añoMot;
+    const lista = getMotivos(añoMot);
+    document.getElementById('motCounter').textContent = `${lista.length} motivo${lista.length!==1?'s':''}`;
+    document.getElementById('motColorPreview').style.background = motColorTmp;
+    document.getElementById('motColorHex').textContent = motColorTmp;
+
+    const listEl = document.getElementById('motList');
+    if (lista.length === 0) {
+        listEl.innerHTML = '<p style="text-align:center;color:#aaa;font-size:13px;padding:16px 0">Sin motivos en '+añoMot+'</p>';
+    } else {
+        listEl.innerHTML = lista.map(m => `
+            <div class="fest-item">
+                <div class="fest-item-dot" style="background:${m.color}"></div>
+                <span class="fest-item-name" title="${m.nombre}">${m.nombre}</span>
+                <button class="fest-item-act" onclick="abrirModalEditarMotivo('${m.id}')" title="Editar">✏️</button>
+                <button class="fest-item-del" onclick="eliminarMotivo('${m.id}')" title="Eliminar">✕</button>
+            </div>`).join('');
+    }
+
+    // Resumen de uso por operario
+    const resumen = document.getElementById('motResumen');
+    if (lista.length === 0) { resumen.innerHTML = ''; return; }
+    let filas = '';
+    operarios.forEach(op => {
+        const cuenta = {};
+        Object.entries(op.motivos||{}).forEach(([k,asigs]) => {
+            if (!k.startsWith(añoMot+'_')) return;
+            (asigs||[]).forEach(a => { cuenta[a.motivoId] = (cuenta[a.motivoId]||0)+1; });
+        });
+        const total = Object.values(cuenta).reduce((s,n)=>s+n,0);
+        if (total === 0) return;
+        const detalle = Object.entries(cuenta).map(([mid,n]) => {
+            const m = getMotivoById(añoMot, mid);
+            return m ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-right:10px"><span style="width:10px;height:10px;border-radius:2px;background:${m.color}"></span>${m.nombre}: ${n}</span>` : '';
+        }).join('');
+        filas += `<div style="padding:8px 0;border-top:1px solid #f3f4f6"><strong style="font-size:13px">${op.nombre}</strong><br>${detalle}</div>`;
+    });
+    resumen.innerHTML = filas ? `<h4 style="font-size:13px;font-weight:600;margin-bottom:4px">Asignados en ${añoMot}</h4>${filas}` : `<p style="font-size:13px;color:#aaa">Ningún operario tiene motivos asignados en ${añoMot}.</p>`;
 }
 
 // ── RENDER ────────────────────────────────────────────────────
@@ -1274,15 +1547,24 @@ function renderCalendarioPrincipal() {
                 if(dia===1&&col<startDow){rowHtml+='<div></div>';continue;}
                 if(dia>diasEnMes){rowHtml+='<div></div>';continue;}
                 const opsVac=operarios.filter(op=>(op.vacaciones[año+'_'+m]||[]).includes(dia));
+                // Operarios con motivo asignado este día
+                const opsMotivo=[];
+                operarios.forEach(op=>{
+                    const arr=(op.motivos&&op.motivos[año+'_'+m])||[];
+                    const asig=arr.find(a=>a.dia===dia);
+                    if(asig){ const mot=getMotivoById(año,asig.motivoId); if(mot) opsMotivo.push({op,mot}); }
+                });
                 const festItem=festListaMes.find(x=>x.dia===dia);
                 const isFest=!!festItem;
                 const isWeek=col>=5;
                 const isToday=año===HOY_AÑO&&m===HOY_MES&&dia===HOY_DIA;
-                if(opsVac.length>0) totalVacMes++;
+                const totalChips=opsVac.length+opsMotivo.length+(isFest?1:0);
+                if(opsVac.length>0||opsMotivo.length>0) totalVacMes++;
 
-                if(opsVac.length===0&&!isFest){
+                if(totalChips===0){
                     rowHtml+=`<div class="main-day free-day${isWeek?' weekend-day':''}${isToday?' today-cell':''}"><span class="day-header-num">${dia}</span></div>`;
-                } else if(opsVac.length===0&&isFest){
+                } else if(opsVac.length===0&&opsMotivo.length===0&&isFest){
+                    // Solo festivo
                     rowHtml+=`<div class="main-day fest-day${isWeek?' weekend-day':''}${isToday?' today-cell':''}" style="background:${festColor}18;border-color:${festColor}">
                         <span class="day-header-num" style="color:${festColor}">${dia}</span>
                         <div class="day-ops-grid">
@@ -1292,14 +1574,18 @@ function renderCalendarioPrincipal() {
                         </div>
                     </div>`;
                 } else {
-                    const chips=opsVac.map(op=>
+                    // Mezcla: vacaciones + motivos + festivo
+                    const chipsVac=opsVac.map(op=>
                         `<div class="op-chip tip" style="background:${op.color}" data-tip="${op.nombre}"><span>${op.iniciales}</span></div>`
+                    ).join('');
+                    const chipsMot=opsMotivo.map(({op,mot})=>
+                        `<div class="op-chip tip" style="background:${mot.color}" data-tip="${op.nombre} · ${mot.nombre}"><span>${op.iniciales}</span></div>`
                     ).join('');
                     const festChip=isFest?`<div class="op-chip tip" style="background:${festColor}" data-tip="${festItem.nombre}"><span>F</span></div>`:'';
                     rowHtml+=`<div class="main-day${isWeek?' weekend-day':''}${isToday?' today-cell':''}${isFest?' fest-day':''}"
                         ${isFest?`style="border-color:${festColor}"`:''}">
                         <span class="day-header-num">${dia}</span>
-                        <div class="day-ops-grid">${chips}${festChip}</div>
+                        <div class="day-ops-grid">${chipsVac}${chipsMot}${festChip}</div>
                     </div>`;
                 }
                 dia++;
