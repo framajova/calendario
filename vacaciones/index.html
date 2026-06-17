@@ -1,1 +1,1195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario de Vacaciones</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; min-height: 100vh; color: #1a1a1a; }
 
+        /* ── HEADER ── */
+        .app-header {
+            background: white; border-bottom: 1px solid #e5e7eb;
+            padding: 0 30px; display: flex; align-items: center;
+            justify-content: space-between; height: 60px;
+            position: sticky; top: 0; z-index: 100; gap: 16px;
+        }
+        .app-header h1 { font-size: 18px; font-weight: 600; }
+        .nav-tabs { display: flex; gap: 4px; background: #f0f2f5; padding: 4px; border-radius: 10px; }
+        .nav-tab {
+            padding: 8px 18px; border: none; border-radius: 7px;
+            background: transparent; font-size: 14px; font-weight: 500;
+            color: #666; cursor: pointer; transition: all 0.2s; font-family: inherit;
+        }
+        .nav-tab.active { background: white; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+        /* ── PAGES ── */
+        .page { display: none; padding: 28px 30px; max-width: 1600px; margin: 0 auto; }
+        .page.active { display: block; }
+
+        /* ── PANEL GENÉRICO ── */
+        .panel { background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+        .panel-header {
+            padding: 16px 20px; border-bottom: 1px solid #e5e7eb;
+            font-size: 15px; font-weight: 600;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        /* ── OPERARIOS ── */
+        .ops-layout { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+        .new-op-form { padding: 14px 16px; border-bottom: 1px solid #f3f4f6; display: flex; gap: 8px; }
+
+        input[type=text], input[type=number] {
+            width: 100%; padding: 9px 12px; border: 1px solid #d1d5db;
+            border-radius: 7px; font-size: 14px; font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s; background: white; color: #1a1a1a;
+        }
+        input[type=text]:focus, input[type=number]:focus {
+            outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+        }
+        .btn-add {
+            flex-shrink: 0; padding: 9px 16px; background: #3b82f6; color: white;
+            border: none; border-radius: 7px; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: background 0.2s; font-family: inherit; white-space: nowrap;
+        }
+        .btn-add:hover { background: #2563eb; }
+
+        .op-list { padding: 10px; display: flex; flex-direction: column; gap: 7px; max-height: calc(100vh - 260px); overflow-y: auto; }
+        .op-item {
+            padding: 11px 13px; border: 2px solid #e5e7eb;
+            border-radius: 10px; cursor: pointer; transition: all 0.2s; background: white;
+        }
+        .op-item:hover { border-color: #93c5fd; }
+        .op-item.selected { border-color: #3b82f6; background: #f8fbff; }
+        .op-item-row { display: flex; align-items: center; gap: 10px; }
+        .avatar {
+            width: 38px; height: 38px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 12px; color: white; flex-shrink: 0;
+        }
+        .op-name { font-size: 14px; font-weight: 600; }
+        .op-meta { font-size: 11px; color: #888; margin-top: 2px; }
+        .op-actions { margin-left: auto; display: flex; gap: 4px; }
+        .btn-icon {
+            background: none; border: none; padding: 5px 7px; border-radius: 6px;
+            cursor: pointer; font-size: 15px; color: #aaa; transition: all 0.2s; line-height: 1;
+        }
+        .btn-icon:hover { background: #f3f4f6; color: #555; }
+        .btn-icon.del:hover { background: #fee2e2; color: #ef4444; }
+        .days-bar-wrap { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+        .days-bar-track { flex: 1; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+        .days-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+        .days-bar-label { font-size: 11px; color: #888; white-space: nowrap; }
+        .days-bar-label.over { color: #ef4444; font-weight: 600; }
+
+        /* Panel meses operario */
+        .op-cal-header {
+            padding: 14px 20px; border-bottom: 1px solid #e5e7eb;
+            display: flex; align-items: center; gap: 12px; background: #fafafa;
+        }
+        .op-cal-total {
+            margin-left: auto; font-size: 13px; font-weight: 600;
+            color: #3b82f6; background: #eff6ff; padding: 4px 12px; border-radius: 20px;
+        }
+        .months-grid { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 14px; }
+        .month-box { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+        .month-name {
+            background: #f8f9fb; padding: 8px 12px; font-size: 13px; font-weight: 600;
+            border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;
+        }
+        .month-count { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px; background: #e5e7eb; color: #555; }
+        .month-count.has-days { background: #dbeafe; color: #1d4ed8; }
+        .days-wrap { padding: 8px; }
+        .dow-row, .days-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .dow-row { margin-bottom: 3px; }
+        .dow { text-align: center; font-size: 10px; font-weight: 600; color: #aaa; padding: 3px 0; }
+        .day {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 11px; border-radius: 5px; cursor: pointer; font-weight: 500;
+            border: 1.5px solid transparent; transition: all 0.12s; color: #444; background: white; user-select: none;
+        }
+        .day:hover { background: #f3f4f6; border-color: #d1d5db; }
+        .day.vac { color: white !important; font-weight: 700; }
+        .day.vac:hover { filter: brightness(0.88); }
+        .day.weekend { color: #94a3b8; }
+        .day.weekend.vac { color: white !important; }
+        .day.festivo { font-weight: 700; border-style: solid; border-width: 1.5px; }
+        .day.today-op { box-shadow: 0 0 0 2px #1a1a1a; }
+
+        /* ── MODAL ── */
+        .modal-backdrop {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal {
+            background: white; border-radius: 14px; width: 480px; max-width: 95vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2); overflow: hidden; max-height: 92vh; overflow-y: auto;
+        }
+        .modal-header {
+            padding: 18px 22px; border-bottom: 1px solid #e5e7eb;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; background: white; z-index: 1;
+        }
+        .modal-header h3 { font-size: 16px; font-weight: 600; }
+        .modal-body { padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+        .field-label { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 7px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .modal-footer {
+            padding: 16px 22px; border-top: 1px solid #e5e7eb;
+            display: flex; gap: 10px; justify-content: flex-end;
+            position: sticky; bottom: 0; background: white;
+        }
+        .btn-ghost {
+            padding: 9px 18px; background: white; border: 1px solid #d1d5db;
+            border-radius: 7px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit;
+        }
+        .btn-ghost:hover { background: #f3f4f6; }
+        .btn-save {
+            padding: 9px 22px; background: #3b82f6; color: white; border: none;
+            border-radius: 7px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit;
+        }
+        .btn-save:hover { background: #2563eb; }
+        .preview-row {
+            display: flex; align-items: center; gap: 16px; padding: 14px 16px;
+            background: #f8f9fb; border-radius: 10px; border: 1px solid #e5e7eb;
+        }
+        .avatar-preview {
+            width: 56px; height: 56px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 16px; color: white; flex-shrink: 0;
+            transition: background 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        /* COLOR PICKER */
+        .color-picker-wrap { border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+        .hue-strip {
+            position: relative; height: 28px; cursor: crosshair;
+            background: linear-gradient(to right, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000);
+        }
+        .hue-thumb {
+            position: absolute; top: 0; bottom: 0; width: 4px;
+            background: white; border: 2px solid #333; border-radius: 2px;
+            transform: translateX(-50%); pointer-events: none;
+        }
+        .satlight-grid { position: relative; height: 120px; cursor: crosshair; }
+        .satlight-thumb {
+            position: absolute; width: 14px; height: 14px; border-radius: 50%;
+            border: 2.5px solid white; box-shadow: 0 0 0 1.5px rgba(0,0,0,0.4);
+            transform: translate(-50%, -50%); pointer-events: none;
+        }
+        .color-hex-row {
+            padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+            border-top: 1px solid #e5e7eb; background: #fafafa;
+        }
+        .color-swatch { width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0; border: 1px solid #e5e7eb; }
+        .color-hex-row input[type=text] { font-family: monospace; font-size: 13px; padding: 6px 10px; width: auto; flex: 1; }
+        .preset-row { padding: 10px 12px; display: flex; gap: 7px; flex-wrap: wrap; border-top: 1px solid #e5e7eb; }
+        .preset-btn { width: 24px; height: 24px; border-radius: 6px; border: 2px solid transparent; cursor: pointer; transition: transform 0.15s; }
+        .preset-btn:hover { transform: scale(1.15); }
+        .preset-btn.active { border-color: #1a1a1a; }
+
+        /* ── FESTIVOS ── */
+        .fest-layout { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+
+        .fest-year-selector {
+            display: flex; align-items: center; gap: 10px; padding: 14px 20px;
+            border-bottom: 1px solid #e5e7eb; background: #fafafa;
+        }
+        .fest-year-btn {
+            width: 32px; height: 32px; border-radius: 8px; border: 1px solid #d1d5db;
+            background: white; font-size: 16px; cursor: pointer; font-family: inherit;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+        }
+        .fest-year-btn:hover { background: #f3f4f6; }
+        .fest-year-label { font-size: 16px; font-weight: 700; flex: 1; text-align: center; }
+
+        .fest-color-preview {
+            width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+            border: 1px solid #e5e7eb; cursor: pointer; transition: transform 0.15s;
+        }
+        .fest-color-preview:hover { transform: scale(1.05); }
+
+        .fest-months-grid { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 14px; }
+
+        /* Lista festivos con nombre */
+        .fest-list { padding: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
+        .fest-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px;
+            background: white; font-size: 13px;
+        }
+        .fest-item-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+        .fest-item-date { font-weight: 700; color: #374151; white-space: nowrap; min-width: 54px; }
+        .fest-item-name { flex: 1; color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fest-item-del {
+            background: none; border: none; cursor: pointer; color: #ccc;
+            font-size: 14px; padding: 2px 5px; border-radius: 4px; transition: all 0.15s;
+        }
+        .fest-item-del:hover { background: #fee2e2; color: #ef4444; }
+
+        .fest-add-form { padding: 12px 16px; border-top: 1px solid #f3f4f6; display: flex; flex-direction: column; gap: 8px; }
+        .fest-add-row { display: flex; gap: 6px; }
+        .fest-add-row input[type=date] {
+            padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 7px;
+            font-size: 13px; font-family: inherit; background: white; color: #1a1a1a;
+            flex-shrink: 0;
+        }
+        .fest-add-row input[type=date]:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+
+        /* Nombre festivo en celda del calendario */
+        .fest-name-label {
+            font-weight: 700; color: white;
+            line-height: 1.2; text-align: center; padding: 2px 3px;
+            overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+            word-break: break-word;
+        }
+        .view-1  .fest-name-label { font-size: 14px; }
+        .view-2  .fest-name-label { font-size: 12px; }
+        .view-3  .fest-name-label { font-size: 11px; }
+        .view-6  .fest-name-label { font-size: 9px; }
+        .view-12 .fest-name-label { display: none; }
+
+        /* ── TOOLBAR CALENDARIO ── */
+        .cal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; flex-wrap: wrap; }
+        .tb-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 10px 18px; background: white; border: 1px solid #d1d5db; border-radius: 10px;
+            font-size: 14px; font-weight: 600; color: #374151; cursor: pointer; font-family: inherit;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            transition: box-shadow 0.15s, transform 0.1s, background 0.15s, color 0.15s;
+            user-select: none;
+        }
+        .tb-btn:hover { background: #f9fafb; box-shadow: 0 4px 12px rgba(0,0,0,0.13), 0 2px 4px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .tb-btn:active { transform: translateY(1px) scale(0.97); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tb-btn.active { background: #3b82f6; border-color: #2563eb; color: white; box-shadow: 0 4px 14px rgba(59,130,246,0.45), 0 2px 4px rgba(59,130,246,0.2); }
+        .tb-btn.active:hover { background: #2563eb; box-shadow: 0 6px 18px rgba(59,130,246,0.5); transform: translateY(-2px); }
+        .tb-btn.active:active { transform: translateY(1px) scale(0.97); box-shadow: 0 2px 6px rgba(59,130,246,0.3); }
+        .tb-btn.today-btn { background: #f0fdf4; border-color: #86efac; color: #15803d; box-shadow: 0 2px 8px rgba(22,163,74,0.15); }
+        .tb-btn.today-btn:hover { background: #dcfce7; box-shadow: 0 4px 14px rgba(22,163,74,0.25); }
+        .tb-btn.nav-fast { padding: 10px 14px; font-size: 17px; color: #6b7280; }
+        .nav-label {
+            padding: 10px 24px; background: white; border: 1px solid #d1d5db; border-radius: 10px;
+            font-size: 15px; font-weight: 700; color: #111827; min-width: 175px; text-align: center;
+            white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .tb-sep { width: 1px; height: 34px; background: #e5e7eb; flex-shrink: 0; }
+
+        /* ── YEAR GRID ── */
+        .year-grid { display: grid; gap: 20px; }
+        .year-grid.view-1  { grid-template-columns: 1fr; }
+        .year-grid.view-2  { grid-template-columns: repeat(2, 1fr); }
+        .year-grid.view-3  { grid-template-columns: repeat(3, 1fr); }
+        .year-grid.view-6  { grid-template-columns: repeat(3, 1fr); }
+        .year-grid.view-12 { grid-template-columns: repeat(4, 1fr); }
+
+        .main-month-box { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+        .main-month-title {
+            padding: 12px 16px; font-size: 15px; font-weight: 600;
+            border-bottom: 1px solid #e5e7eb; background: #fafafa;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .main-month-badge { font-size: 12px; color: #888; font-weight: 400; }
+        .main-days-wrap { padding: 10px 12px 14px; }
+        .main-dow-row, .main-days-row { display: grid; grid-template-columns: 80px repeat(7, 1fr); }
+        .view-1  .main-dow-row, .view-1  .main-days-row { gap: 4px; }
+        .view-2  .main-dow-row, .view-2  .main-days-row { gap: 3px; }
+        .view-3  .main-dow-row, .view-3  .main-days-row { gap: 3px; }
+        .view-6  .main-dow-row, .view-6  .main-days-row { gap: 2px; }
+        .view-12 .main-dow-row, .view-12 .main-days-row { gap: 2px; }
+        .main-dow-row { margin-bottom: 3px; }
+        .dow-week-header {
+            font-weight: 700; color: white;
+            background: #6b7280; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .view-1  .dow-week-header { font-size: 42px; }
+        .view-2  .dow-week-header { font-size: 39px; }
+        .view-3  .dow-week-header { font-size: 36px; }
+        .view-6  .dow-week-header { font-size: 33px; }
+        .view-12 .dow-week-header { font-size: 30px; }
+        .main-dow { text-align: center; font-weight: 700; border-radius: 6px; padding: 6px 0; }
+        .main-dow.dow-wday { background: #3b82f6; color: white; }
+        .main-dow.dow-wend { background: #9ca3af; color: white; }
+        .view-1  .main-dow { font-size: 42px; padding: 10px 0; }
+        .view-2  .main-dow { font-size: 39px; padding: 9px 0; }
+        .view-3  .main-dow { font-size: 36px; padding: 8px 0; }
+        .view-6  .main-dow { font-size: 33px; padding: 7px 0; }
+        .view-12 .main-dow { font-size: 30px; padding: 6px 0; }
+        .week-num {
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; color: white; background: #6b7280; border-radius: 6px; margin-right: 2px;
+        }
+        .view-1  .week-num { font-size: 42px; }
+        .view-2  .week-num { font-size: 39px; }
+        .view-3  .week-num { font-size: 36px; }
+        .view-6  .week-num { font-size: 33px; }
+        .view-12 .week-num { font-size: 30px; }
+
+        /* CELDA DÍA */
+        .main-day {
+            aspect-ratio: 1; border-radius: 6px; display: flex; flex-direction: column;
+            align-items: stretch; padding: 3px; border: 1.5px solid #d1d5db; background: white; overflow: visible;
+        }
+        .main-day.weekend-day { background: #f3f4f6; border-color: #d1d5db; }
+        .main-day.today-cell { background: #dbeafe !important; border: 2.5px solid #3b82f6 !important; }
+        .main-day.today-cell .day-header-num { color: #1d4ed8; font-weight: 800; }
+        .main-day.fest-day { border-style: solid; border-width: 2px; }
+
+        .day-header-num { font-weight: 700; color: #111827; line-height: 1; flex-shrink: 0; text-align: left; }
+        .view-1  .day-header-num { font-size: 15px; margin-bottom: 3px; }
+        .view-2  .day-header-num { font-size: 14px; margin-bottom: 2px; }
+        .view-3  .day-header-num { font-size: 13px; margin-bottom: 2px; }
+        .view-6  .day-header-num { font-size: 12px; margin-bottom: 1px; }
+        .view-12 .day-header-num { font-size: 11px; margin-bottom: 1px; }
+        .main-day.weekend-day .day-header-num { color: #6b7280; }
+
+        .day-ops-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; flex: 1; min-height: 0; }
+        .main-day.fest-day .day-ops-grid { display: flex; flex: 1; min-height: 0; }
+        .op-chip { border-radius: 3px; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: default; }
+        .op-chip span { font-weight: 700; color: white; line-height: 1; white-space: nowrap; overflow: hidden; }
+        .view-1  .op-chip span { font-size: 11px; }
+        .view-2  .op-chip span { font-size: 10px; }
+        .view-3  .op-chip span { font-size: 10px; }
+        .view-6  .op-chip span { font-size: 9px; }
+        .view-12 .op-chip span { font-size: 8px; }
+
+        /* Chip de festivo en el calendario — ocupa toda la zona de ops */
+        .fest-chip {
+            border-radius: 4px; display: flex; align-items: center; justify-content: center;
+            cursor: default; grid-column: span 3; flex: 1; padding: 4px;
+        }
+
+        .main-day.free-day { justify-content: center; align-items: center; padding: 0; }
+        .main-day.free-day .day-header-num { margin: 0; text-align: center; }
+        .view-1  .main-day.free-day .day-header-num { font-size: 15px; }
+        .view-2  .main-day.free-day .day-header-num { font-size: 14px; }
+        .view-3  .main-day.free-day .day-header-num { font-size: 13px; }
+        .view-6  .main-day.free-day .day-header-num { font-size: 12px; }
+        .view-12 .main-day.free-day .day-header-num { font-size: 11px; }
+
+        .empty-cal { padding: 60px 20px; text-align: center; color: #aaa; background: white; border-radius: 12px; border: 1px solid #e5e7eb; grid-column: 1 / -1; }
+
+        /* TOOLTIP */
+        #vac-tooltip {
+            position: fixed; background: #1a1a1a; color: white; font-size: 12px; font-weight: 500;
+            font-family: 'Inter', sans-serif; padding: 5px 10px; border-radius: 6px;
+            white-space: nowrap; pointer-events: none; z-index: 9999; opacity: 0;
+            transition: opacity 0.15s; transform: translateX(-50%);
+        }
+        #vac-tooltip.visible { opacity: 1; }
+        #vac-tooltip::after {
+            content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+            border: 5px solid transparent; border-top-color: #1a1a1a;
+        }
+
+        /* BADGE AÑO ARCHIVADO */
+        .archived-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 11px; font-weight: 600; color: #92400e;
+            background: #fef3c7; border: 1px solid #fde68a;
+            padding: 3px 10px; border-radius: 20px;
+        }
+
+        @media (max-width: 1100px) { .year-grid.view-12 { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 960px) {
+            .ops-layout, .fest-layout { grid-template-columns: 1fr; }
+            .page { padding: 16px; }
+            .year-grid.view-3, .year-grid.view-6 { grid-template-columns: repeat(2, 1fr); }
+            .year-grid.view-12 { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .year-grid { grid-template-columns: 1fr !important; }
+            .cal-toolbar { gap: 8px; }
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div id="vac-tooltip"></div>
+
+<div class="app-header">
+    <h1>📅 Vacaciones del Personal</h1>
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="cambiarPagina('operarios',this)">👷 Operarios</button>
+        <button class="nav-tab" onclick="cambiarPagina('calendario',this)">📆 Calendario</button>
+        <button class="nav-tab" onclick="cambiarPagina('festivos',this)">🗓️ Festivos</button>
+    </div>
+    <span style="font-size:13px;color:#888;min-width:40px;text-align:right" id="headerYear"></span>
+</div>
+
+<!-- MODAL EDITAR OPERARIO / FESTIVOS -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="cerrarModalClick(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 id="modalTitulo">Editar</h3>
+            <button class="btn-icon" onclick="cerrarModal()" style="font-size:18px">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-footer">
+            <button class="btn-ghost" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn-save" id="modalSaveBtn" onclick="guardarModal()">Guardar cambios</button>
+        </div>
+    </div>
+</div>
+
+<!-- OPERARIOS -->
+<div id="page-operarios" class="page active">
+    <div class="ops-layout">
+        <div>
+            <div class="panel">
+                <div class="panel-header">
+                    <span>👷 Operarios</span>
+                    <span style="font-size:12px;color:#888" id="opCounter"></span>
+                </div>
+                <div class="new-op-form">
+                    <input type="text" id="inputNombre" placeholder="Nombre del nuevo operario...">
+                    <button class="btn-add" onclick="agregarOperario()">＋ Añadir</button>
+                </div>
+                <div class="op-list" id="opList"></div>
+            </div>
+        </div>
+        <div class="panel" id="panelCal">
+            <div id="opCalContent">
+                <div style="padding:70px 20px;text-align:center;color:#aaa;">
+                    <div style="font-size:40px;margin-bottom:14px">👆</div>
+                    <p style="font-size:14px">Selecciona un operario para gestionar sus vacaciones</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CALENDARIO -->
+<div id="page-calendario" class="page">
+    <div class="cal-toolbar">
+        <button class="tb-btn nav-fast" onclick="navMes(-12)" title="Año anterior">«</button>
+        <button class="tb-btn" onclick="navMes(-1)">‹ Anterior</button>
+        <div class="nav-label" id="yearLabel">—</div>
+        <button class="tb-btn" onclick="navMes(1)">Siguiente ›</button>
+        <button class="tb-btn nav-fast" onclick="navMes(12)" title="Año siguiente">»</button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn today-btn" onclick="irAhoy()">Hoy</button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn active" data-view="1"  onclick="setView(1,this)">1 mes</button>
+        <button class="tb-btn"        data-view="2"  onclick="setView(2,this)">2 meses</button>
+        <button class="tb-btn"        data-view="3"  onclick="setView(3,this)">3 meses</button>
+        <button class="tb-btn"        data-view="6"  onclick="setView(6,this)">6 meses</button>
+        <button class="tb-btn"        data-view="12" onclick="setView(12,this)">Año completo</button>
+    </div>
+    <div id="calArchiveBanner" style="display:none;margin-bottom:16px"></div>
+    <div class="year-grid view-1" id="yearGrid"></div>
+</div>
+
+<!-- FESTIVOS -->
+<div id="page-festivos" class="page">
+    <div class="fest-layout">
+        <div>
+            <div class="panel">
+                <div class="panel-header">
+                    <span>🗓️ Festivos</span>
+                    <span style="font-size:12px;color:#888" id="festCounter"></span>
+                </div>
+                <div class="fest-year-selector">
+                    <button class="fest-year-btn" onclick="cambiarAñoFest(-1)">‹</button>
+                    <div class="fest-year-label" id="festYearLabel">2026</div>
+                    <button class="fest-year-btn" onclick="cambiarAñoFest(1)">›</button>
+                </div>
+                <div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;gap:10px">
+                    <div class="fest-color-preview" id="festColorPreview" onclick="abrirModalFestColor()" title="Cambiar color festivos"></div>
+                    <div>
+                        <div style="font-size:13px;font-weight:500" id="festColorHex">#f59e0b</div>
+                        <div style="font-size:11px;color:#888">Color · clic para cambiar</div>
+                    </div>
+                </div>
+                <!-- Formulario añadir festivo -->
+                <div class="fest-add-form">
+                    <div class="field-label">Añadir festivo</div>
+                    <div class="fest-add-row">
+                        <input type="date" id="festInputFecha">
+                        <input type="text" id="festInputNombre" placeholder="Nombre del festivo..." style="flex:1">
+                    </div>
+                    <button class="btn-add" onclick="agregarFestivo()" style="width:100%">＋ Añadir festivo</button>
+                </div>
+                <!-- Lista de festivos -->
+                <div class="fest-list" id="festList"></div>
+            </div>
+        </div>
+        <div class="panel">
+            <div id="festCalContent"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const PRESETS = [
+    '#3b82f6','#7c3aed','#0d9488','#ea580c','#db2777',
+    '#16a34a','#d97706','#dc2626','#4f46e5','#0891b2',
+    '#0f766e','#9333ea','#c2410c','#be185d','#15803d',
+    '#b45309','#b91c1c','#1d4ed8',
+];
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DOW   = ['L','M','X','J','V','S','D'];
+
+const hoy = new Date();
+const HOY_AÑO = hoy.getFullYear(), HOY_MES = hoy.getMonth(), HOY_DIA = hoy.getDate();
+
+let operarios  = [];
+let selId      = null;
+let añoVista   = HOY_AÑO;
+let mesVista   = HOY_MES;
+let vistaNum   = 1;
+let añoFest    = HOY_AÑO;  // año activo en panel festivos
+
+// modalMode: 'operario' | 'festColor'
+let modalMode  = null;
+let editId     = null;
+let pickerH    = 210, pickerS = 0.7, pickerL = 0.5;
+
+// ── ESTRUCTURA DE DATOS ────────────────────────────────────────
+// operarios[].vacaciones: { "2025_6": [1,2,3], ... } — por año+mes
+// festivos: { "2025": { color: "#f59e0b", dias: { "6": [14,15], "11":[1] } } }
+// El cambio de año NO borra vacaciones; quedan archivadas en años pasados.
+
+// ── HELPERS ───────────────────────────────────────────────────
+const diasUsadosAño = (op, año) =>
+    Object.entries(op.vacaciones || {})
+        .filter(([k]) => k.startsWith(año + '_'))
+        .reduce((s,[,a]) => s+(a||[]).length, 0);
+
+function getFestivos(año) {
+    const d = localStorage.getItem('vac_festivos_v1');
+    const all = d ? JSON.parse(d) : {};
+    return all[año] || { color: '#f59e0b', dias: {} };
+}
+
+function setFestivos(año, data) {
+    const d = localStorage.getItem('vac_festivos_v1');
+    const all = d ? JSON.parse(d) : {};
+    all[año] = data;
+    localStorage.setItem('vac_festivos_v1', JSON.stringify(all));
+}
+
+function esFestivo(año, mes, dia) {
+    const f = getFestivos(año);
+    return (f.dias[mes.toString()] || []).includes(dia);
+}
+
+function isoWeek(año, mes, dia) {
+    const d = new Date(año, mes, dia);
+    d.setHours(0,0,0,0);
+    d.setDate(d.getDate() + 3 - (d.getDay()+6)%7);
+    const w1 = new Date(d.getFullYear(), 0, 4);
+    return 1 + Math.round(((d-w1)/86400000 - 3 + (w1.getDay()+6)%7)/7);
+}
+
+// ── COLOR PICKER ──────────────────────────────────────────────
+function hslToHex(h,s,l) {
+    const hp=h/360, q=l<0.5?l*(1+s):l+s-l*s, p=2*l-q;
+    const f=(p,q,t)=>{ if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p; };
+    return '#'+[f(p,q,hp+1/3),f(p,q,hp),f(p,q,hp-1/3)].map(v=>Math.round(v*255).toString(16).padStart(2,'0')).join('');
+}
+function hexToHsl(hex) {
+    hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
+    const r=parseInt(hex.substring(0,2),16)/255,g=parseInt(hex.substring(2,4),16)/255,b=parseInt(hex.substring(4,6),16)/255;
+    const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;
+    if(max===min){h=s=0;}else{const d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);
+        switch(max){case r:h=((g-b)/d+(g<b?6:0))/6;break;case g:h=((b-r)/d+2)/6;break;case b:h=((r-g)/d+4)/6;break;}}
+    return [h*360,s,l];
+}
+function pickerColor() { return hslToHex(pickerH,pickerS,pickerL); }
+
+function renderPickerHTML(previewId, hexInputId) {
+    return `
+        <div class="color-picker-wrap">
+            <div class="hue-strip" id="hueStrip"><div class="hue-thumb" id="hueThumb"></div></div>
+            <div class="satlight-grid" id="satLightGrid"><div class="satlight-thumb" id="satLightThumb"></div></div>
+            <div class="color-hex-row">
+                <div class="color-swatch" id="colorSwatch"></div>
+                <input type="text" id="${hexInputId}" placeholder="#3b82f6">
+                <span style="font-size:12px;color:#888">HEX</span>
+            </div>
+            <div class="preset-row" id="presetRow"></div>
+        </div>`;
+}
+
+function initPicker(hexInputId, onChangeCb) {
+    document.getElementById('presetRow').innerHTML = PRESETS.map(c=>
+        `<button class="preset-btn" style="background:${c}" onclick="applyPreset('${c}')"></button>`
+    ).join('');
+    actualizarPickerUI();
+    document.getElementById(hexInputId).addEventListener('change', e => {
+        let v=e.target.value.trim(); if(!v.startsWith('#')) v='#'+v;
+        if(/^#[0-9a-fA-F]{6}$/.test(v)){ const [h,s,l]=hexToHsl(v);pickerH=h;pickerS=s;pickerL=l;actualizarPickerUI();if(onChangeCb)onChangeCb(); }
+    });
+}
+
+function applyPreset(hex) {
+    const [h,s,l]=hexToHsl(hex);pickerH=h;pickerS=s;pickerL=l;
+    actualizarPickerUI();
+    if(modalMode==='operario') actualizarPreviewModal();
+    if(modalMode==='festColor') actualizarPreviewFest();
+}
+
+function actualizarPickerUI() {
+    const hueThumb=document.getElementById('hueThumb');
+    if(!hueThumb) return;
+    hueThumb.style.left=(pickerH/360*100)+'%';
+    const grid=document.getElementById('satLightGrid');
+    grid.style.background=`linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,${hslToHex(pickerH,1,0.5)})`;
+    const x=pickerS,y=1-(pickerL*2/(1+(1-pickerS)));
+    const thumb=document.getElementById('satLightThumb');
+    thumb.style.left=x*100+'%';thumb.style.top=Math.max(0,Math.min(1,y))*100+'%';
+    thumb.style.background=pickerColor();
+    const hex=pickerColor();
+    document.getElementById('colorSwatch').style.background=hex;
+    const hi=document.getElementById('hexInputOp')||document.getElementById('hexInputFest');
+    if(hi) hi.value=hex;
+}
+
+// drag hue
+(function(){let drag=false;
+    function onH(e){if(!drag)return;const r=document.getElementById('hueStrip');if(!r)return;
+        const rect=r.getBoundingClientRect();pickerH=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width))*360;
+        actualizarPickerUI();if(modalMode==='operario')actualizarPreviewModal();if(modalMode==='festColor')actualizarPreviewFest();}
+    document.addEventListener('mousedown',e=>{if(e.target.closest('#hueStrip')){drag=true;onH(e);}});
+    document.addEventListener('mousemove',onH);document.addEventListener('mouseup',()=>drag=false);
+    document.addEventListener('touchstart',e=>{if(e.target.closest('#hueStrip')){drag=true;onH(e.touches[0]);}},{passive:true});
+    document.addEventListener('touchmove',e=>onH(e.touches[0]),{passive:true});
+    document.addEventListener('touchend',()=>drag=false);
+})();
+// drag satlight
+(function(){let drag=false;
+    function onSL(e){if(!drag)return;const r=document.getElementById('satLightGrid');if(!r)return;
+        const rect=r.getBoundingClientRect();
+        const x=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+        const y=Math.max(0,Math.min(1,(e.clientY-rect.top)/rect.height));
+        pickerS=x;pickerL=(1-y)*(1-x/2);
+        actualizarPickerUI();if(modalMode==='operario')actualizarPreviewModal();if(modalMode==='festColor')actualizarPreviewFest();}
+    document.addEventListener('mousedown',e=>{if(e.target.closest('#satLightGrid')){drag=true;onSL(e);}});
+    document.addEventListener('mousemove',onSL);document.addEventListener('mouseup',()=>drag=false);
+    document.addEventListener('touchstart',e=>{if(e.target.closest('#satLightGrid')){drag=true;onSL(e.touches[0]);}},{passive:true});
+    document.addEventListener('touchmove',e=>onSL(e.touches[0]),{passive:true});
+    document.addEventListener('touchend',()=>drag=false);
+})();
+
+// ── STORAGE → API PHP ─────────────────────────────────────────
+const API = 'api.php';
+let _festivosCache = {};
+
+async function guardar() {
+    try {
+        await fetch(API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ operarios, festivos: _festivosCache })
+        });
+        // Backup local por si el servidor falla
+        localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache }));
+    } catch(e) { console.error('Error guardando:', e); }
+}
+
+async function cargar() {
+    mostrarCargando(true);
+    try {
+        const r = await fetch(API + '?t=' + Date.now());
+        if (r.ok) {
+            const d = await r.json();
+            operarios = d.operarios || [];
+            _festivosCache = d.festivos || {};
+            // Actualizar backup local
+            localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache }));
+        }
+    } catch(e) {
+        console.warn('Sin conexión al servidor, usando backup local');
+        try {
+            const d = localStorage.getItem('vac_backup');
+            if (d) { const p = JSON.parse(d); operarios = p.operarios||[]; _festivosCache = p.festivos||{}; }
+        } catch(e2) {}
+    }
+    mostrarCargando(false);
+    añoVista=HOY_AÑO; mesVista=HOY_MES; añoFest=HOY_AÑO;
+    actualizarNavLabel();
+    renderFestivosPanel();
+    renderTodo();
+}
+
+function mostrarCargando(show) {
+    let el = document.getElementById('loadingBar');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'loadingBar';
+        el.style.cssText = 'position:fixed;top:60px;left:0;right:0;height:3px;background:#3b82f6;z-index:999;transition:opacity 0.4s';
+        document.body.appendChild(el);
+    }
+    el.style.opacity = show ? '1' : '0';
+}
+
+function actualizarNavLabel() {
+    let label;
+    if(vistaNum===12) label=añoVista.toString();
+    else if(vistaNum===1) label=MESES[mesVista]+' '+añoVista;
+    else { const fin=mesAbsoluto(vistaNum-1); label=MESES[mesVista]+' – '+MESES[fin.mes]+' '+fin.año; }
+    document.getElementById('yearLabel').textContent=label;
+    document.getElementById('headerYear').textContent=vistaNum===12?añoVista:'';
+}
+
+function mesAbsoluto(offset) {
+    const total=añoVista*12+mesVista+offset;
+    return {año:Math.floor(total/12),mes:total%12};
+}
+
+// ── NAVEGACIÓN ────────────────────────────────────────────────
+function setView(n,btn) {
+    vistaNum=n;
+    document.querySelectorAll('.tb-btn[data-view]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('yearGrid').className='year-grid view-'+n;
+    if(n===12) mesVista=0;
+    actualizarNavLabel();
+    renderCalendarioPrincipal();
+}
+function navMes(delta) {
+    if(vistaNum===12){añoVista+=Math.sign(delta);}
+    else{let abs=añoVista*12+mesVista+delta*vistaNum;añoVista=Math.floor(abs/12);mesVista=abs%12;if(mesVista<0){mesVista+=12;añoVista--;}}
+    actualizarNavLabel(); renderCalendarioPrincipal();
+}
+function irAhoy() {
+    añoVista=HOY_AÑO; mesVista=HOY_MES; if(vistaNum===12) mesVista=0;
+    actualizarNavLabel(); renderCalendarioPrincipal();
+}
+function cambiarPagina(id,btn) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('page-'+id).classList.add('active');
+    btn.classList.add('active');
+    if(id==='calendario') renderCalendarioPrincipal();
+    if(id==='festivos') renderFestivosPanel();
+}
+
+// ── OPERARIOS ─────────────────────────────────────────────────
+function agregarOperario() {
+    const input=document.getElementById('inputNombre');
+    const nombre=input.value.trim(); if(!nombre) return;
+    const iniciales=nombre.split(' ').map(p=>p[0]).join('').toUpperCase().substring(0,3);
+    const cols=['#3b82f6','#7c3aed','#0d9488','#ea580c','#db2777','#16a34a','#d97706','#dc2626','#4f46e5','#0891b2'];
+    operarios.push({id:Date.now().toString(),nombre,iniciales,color:cols[operarios.length%cols.length],maxDias:22,vacaciones:{}});
+    guardar(); input.value=''; renderTodo();
+}
+function eliminarOperario(id) {
+    if(!confirm('¿Eliminar este operario y todas sus vacaciones?')) return;
+    operarios=operarios.filter(o=>o.id!==id);
+    if(selId===id) selId=null;
+    guardar(); renderTodo();
+}
+function seleccionar(id) { selId=selId===id?null:id; renderTodo(); }
+function toggleDia(mes,dia,año) {
+    const op=operarios.find(o=>o.id===selId); if(!op) return;
+    const k=año+'_'+mes;
+    const arr=op.vacaciones[k]?[...op.vacaciones[k]]:[];
+    const i=arr.indexOf(dia);
+    if(i>-1) arr.splice(i,1); else arr.push(dia);
+    op.vacaciones[k]=arr.length?arr.sort((a,b)=>a-b):undefined;
+    guardar(); renderTodo();
+}
+
+// ── FESTIVOS (en memoria + servidor) ─────────────────────────
+function getFestivos(año) {
+    return _festivosCache[año] || { color: '#f59e0b', lista: [] };
+}
+function setFestivos(año, data) {
+    _festivosCache[año] = data;
+    guardar();
+}
+function getFestivoNombre(año, mes, dia) {
+    const f = getFestivos(año);
+    const item = f.lista.find(x => x.mes===mes && x.dia===dia);
+    return item ? item.nombre : 'Festivo';
+}
+function esFestivo(año, mes, dia) {
+    return getFestivos(año).lista.some(x => x.mes===mes && x.dia===dia);
+}
+
+function cambiarAñoFest(delta) {
+    añoFest += delta;
+    renderFestivosPanel();
+}
+
+function agregarFestivo() {
+    const fechaEl = document.getElementById('festInputFecha');
+    const nombreEl = document.getElementById('festInputNombre');
+    const nombre = nombreEl.value.trim();
+    if (!fechaEl.value || !nombre) { alert('Indica fecha y nombre del festivo.'); return; }
+    const [yyyy, mm, dd] = fechaEl.value.split('-').map(Number);
+    if (yyyy !== añoFest) { alert(`La fecha debe ser del año ${añoFest}.`); return; }
+    const f = getFestivos(añoFest);
+    // Evitar duplicados
+    if (f.lista.some(x => x.mes===mm-1 && x.dia===dd)) { alert('Ese día ya es festivo.'); return; }
+    f.lista.push({ id: Date.now().toString(), mes: mm-1, dia: dd, nombre });
+    f.lista.sort((a,b) => a.mes!==b.mes ? a.mes-b.mes : a.dia-b.dia);
+    setFestivos(añoFest, f);
+    nombreEl.value = '';
+    fechaEl.value = '';
+    renderFestivosPanel();
+    renderCalendarioPrincipal();
+}
+
+function eliminarFestivo(id) {
+    const f = getFestivos(añoFest);
+    f.lista = f.lista.filter(x => x.id !== id);
+    setFestivos(añoFest, f);
+    renderFestivosPanel();
+    renderCalendarioPrincipal();
+}
+
+function renderFestivosPanel() {
+    document.getElementById('festYearLabel').textContent = añoFest;
+    const f = getFestivos(añoFest);
+    const total = f.lista.length;
+
+    document.getElementById('festColorPreview').style.background = f.color;
+    document.getElementById('festColorHex').textContent = f.color;
+    document.getElementById('festCounter').textContent = `${total} festivo${total!==1?'s':''}`;
+
+    // Lista izquierda
+    const listEl = document.getElementById('festList');
+    if (total === 0) {
+        listEl.innerHTML = '<p style="text-align:center;color:#aaa;font-size:13px;padding:16px 0">Sin festivos en '+añoFest+'</p>';
+    } else {
+        listEl.innerHTML = f.lista.map(x => `
+            <div class="fest-item">
+                <div class="fest-item-dot" style="background:${f.color}"></div>
+                <span class="fest-item-date">${String(x.dia).padStart(2,'0')}/${String(x.mes+1).padStart(2,'0')}</span>
+                <span class="fest-item-name" title="${x.nombre}">${x.nombre}</span>
+                <button class="fest-item-del" onclick="eliminarFestivo('${x.id}')" title="Eliminar">✕</button>
+            </div>`).join('');
+    }
+
+    // Calendario derecha
+    let html = '<div style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:14px">';
+    for (let m = 0; m < 12; m++) {
+        const diasEnMes = new Date(añoFest, m+1, 0).getDate();
+        const primerDia = (new Date(añoFest, m, 1).getDay()+6)%7;
+        const festDiasMes = f.lista.filter(x => x.mes===m);
+
+        html += `<div class="month-box">
+            <div class="month-name">${MESES[m]}<span class="month-count ${festDiasMes.length?'has-days':''}">${festDiasMes.length}</span></div>
+            <div class="days-wrap">
+                <div class="dow-row">${DOW.map(d=>`<div class="dow">${d}</div>`).join('')}</div>
+                <div class="days-row">${'<div></div>'.repeat(primerDia)}
+                ${Array.from({length:diasEnMes},(_,i)=>{
+                    const dia=i+1;
+                    const festItem=festDiasMes.find(x=>x.dia===dia);
+                    const dow=(primerDia+i)%7, isWeek=dow>=5;
+                    const isToday=añoFest===HOY_AÑO&&m===HOY_MES&&dia===HOY_DIA;
+                    return `<div class="day${festItem?' festivo':''}${isWeek&&!festItem?' weekend':''}${isToday?' today-op':''}"
+                        style="${festItem?`background:${f.color};border-color:${f.color};color:white`:''}"
+                        title="${festItem?festItem.nombre:''}">${dia}</div>`;
+                }).join('')}
+                </div>
+            </div>
+        </div>`;
+    }
+    html += '</div>';
+    document.getElementById('festCalContent').innerHTML = html;
+
+    // Poner fecha por defecto del año festivo
+    const fi = document.getElementById('festInputFecha');
+    if (fi && !fi.value) fi.value = `${añoFest}-01-01`;
+    fi.min = `${añoFest}-01-01`;
+    fi.max = `${añoFest}-12-31`;
+}
+
+// ── MODAL ─────────────────────────────────────────────────────
+function cerrarModal() { document.getElementById('modalBackdrop').classList.remove('open'); modalMode=null; editId=null; }
+function cerrarModalClick(e) { if(e.target===document.getElementById('modalBackdrop')) cerrarModal(); }
+
+function guardarModal() {
+    if(modalMode==='operario') guardarEdicionOperario();
+    if(modalMode==='festColor') guardarColorFest();
+}
+
+/* Modal operario */
+function abrirModal(id) {
+    const op=operarios.find(o=>o.id===id); if(!op) return;
+    editId=id; modalMode='operario';
+    const [h,s,l]=hexToHsl(op.color||'#3b82f6');
+    pickerH=h;pickerS=s;pickerL=l;
+    document.getElementById('modalTitulo').textContent='Editar operario';
+    document.getElementById('modalBody').innerHTML=`
+        <div class="preview-row">
+            <div class="avatar-preview" id="modalPreview">${op.iniciales}</div>
+            <div>
+                <div style="font-size:15px;font-weight:600" id="previewNombre">${op.nombre}</div>
+                <div style="font-size:12px;color:#888;margin-top:3px">Vista previa</div>
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div><div class="field-label">Nombre</div><input type="text" id="editNombre" value="${op.nombre}"></div>
+            <div><div class="field-label">Iniciales (máx. 3)</div><input type="text" id="editIniciales" value="${op.iniciales}" maxlength="3" style="text-transform:uppercase"></div>
+        </div>
+        <div><div class="field-label">Días máximos al año</div><input type="number" id="editMaxDias" value="${op.maxDias||22}" min="0" max="366"></div>
+        <div><div class="field-label">Color identificativo</div>${renderPickerHTML('modalPreview','hexInputOp')}</div>`;
+    document.getElementById('editNombre').oninput=actualizarPreviewModal;
+    document.getElementById('editIniciales').oninput=actualizarPreviewModal;
+    initPicker('hexInputOp', actualizarPreviewModal);
+    actualizarPreviewModal();
+    document.getElementById('modalBackdrop').classList.add('open');
+}
+
+function actualizarPreviewModal() {
+    const ini=(document.getElementById('editIniciales')?.value.trim().toUpperCase().substring(0,3))||
+        document.getElementById('editNombre')?.value.trim().split(' ').map(p=>p[0]).join('').toUpperCase().substring(0,3)||'?';
+    const prev=document.getElementById('modalPreview');
+    if(prev){prev.textContent=ini;prev.style.background=pickerColor();}
+    const pn=document.getElementById('previewNombre');
+    if(pn) pn.textContent=document.getElementById('editNombre')?.value.trim()||'Sin nombre';
+}
+
+function guardarEdicionOperario() {
+    const op=operarios.find(o=>o.id===editId); if(!op) return;
+    const nombre=document.getElementById('editNombre').value.trim();
+    const iniciales=document.getElementById('editIniciales').value.trim().toUpperCase().substring(0,3);
+    const maxDias=parseInt(document.getElementById('editMaxDias').value)||22;
+    if(!nombre||!iniciales){alert('Nombre e iniciales son obligatorios.');return;}
+    op.nombre=nombre;op.iniciales=iniciales;op.maxDias=maxDias;op.color=pickerColor();
+    guardar();cerrarModal();renderTodo();
+}
+
+/* Modal color festivos */
+function abrirModalFestColor() {
+    const f=getFestivos(añoFest);
+    modalMode='festColor';
+    const [h,s,l]=hexToHsl(f.color||'#f59e0b');
+    pickerH=h;pickerS=s;pickerL=l;
+    document.getElementById('modalTitulo').textContent='Color de festivos '+añoFest;
+    document.getElementById('modalBody').innerHTML=`
+        <div class="preview-row">
+            <div style="width:56px;height:56px;border-radius:10px;flex-shrink:0;transition:background 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.15)" id="festColorSquare"></div>
+            <div>
+                <div style="font-size:15px;font-weight:600">Festivos ${añoFest}</div>
+                <div style="font-size:12px;color:#888;margin-top:3px">Color para marcar los días festivos</div>
+            </div>
+        </div>
+        <div><div class="field-label">Color festivos</div>${renderPickerHTML('festColorSquare','hexInputFest')}</div>`;
+    initPicker('hexInputFest', actualizarPreviewFest);
+    actualizarPreviewFest();
+    document.getElementById('modalBackdrop').classList.add('open');
+}
+
+function actualizarPreviewFest() {
+    const sq=document.getElementById('festColorSquare');
+    if(sq) sq.style.background=pickerColor();
+}
+
+function guardarColorFest() {
+    const f=getFestivos(añoFest);
+    f.color=pickerColor();
+    setFestivos(añoFest,f);
+    cerrarModal();
+    renderFestivosPanel();
+    renderCalendarioPrincipal();
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function renderTodo() { renderLista(); renderPanelCal(); renderCalendarioPrincipal(); }
+
+function renderLista() {
+    const el=document.getElementById('opList');
+    document.getElementById('opCounter').textContent=operarios.length+' operario'+(operarios.length!==1?'s':'');
+    if(operarios.length===0){el.innerHTML='<p style="text-align:center;color:#aaa;font-size:13px;padding:24px 0">Aún no hay operarios</p>';return;}
+    el.innerHTML='';
+    operarios.forEach(op=>{
+        const usados=diasUsadosAño(op,añoVista),max=op.maxDias||22;
+        const pct=Math.min(100,Math.round(usados/max*100)),over=usados>max;
+        const div=document.createElement('div');
+        div.className='op-item'+(selId===op.id?' selected':'');
+        div.onclick=()=>seleccionar(op.id);
+        div.innerHTML=`
+            <div class="op-item-row">
+                <div class="avatar" style="background:${op.color}">${op.iniciales}</div>
+                <div style="flex:1;min-width:0">
+                    <div class="op-name">${op.nombre}</div>
+                    <div class="op-meta">${usados} / ${max} días usados en ${añoVista}</div>
+                </div>
+                <div class="op-actions">
+                    <button class="btn-icon" onclick="event.stopPropagation();abrirModal('${op.id}')">✏️</button>
+                    <button class="btn-icon del" onclick="event.stopPropagation();eliminarOperario('${op.id}')">🗑️</button>
+                </div>
+            </div>
+            <div class="days-bar-wrap">
+                <div class="days-bar-track"><div class="days-bar-fill" style="width:${pct}%;background:${over?'#ef4444':op.color}"></div></div>
+                <span class="days-bar-label ${over?'over':''}">${pct}%${over?' ⚠️':''}</span>
+            </div>`;
+        el.appendChild(div);
+    });
+}
+
+function renderPanelCal() {
+    const content=document.getElementById('opCalContent');
+    if(!selId){
+        content.innerHTML=`<div style="padding:70px 20px;text-align:center;color:#aaa;"><div style="font-size:40px;margin-bottom:14px">👆</div><p style="font-size:14px">Selecciona un operario para gestionar sus vacaciones</p></div>`;
+        return;
+    }
+    const op=operarios.find(o=>o.id===selId); if(!op) return;
+    const usados=diasUsadosAño(op,añoVista),max=op.maxDias||22,over=usados>max;
+    const esAñoAnterior=añoVista<HOY_AÑO;
+
+    let html=`
+        <div class="op-cal-header">
+            <div class="avatar" style="background:${op.color};width:36px;height:36px;font-size:12px">${op.iniciales}</div>
+            <div>
+                <div style="font-size:15px;font-weight:600">${op.nombre}</div>
+                <div style="font-size:12px;color:#888">
+                    ${esAñoAnterior?'Archivo de vacaciones · ':'Clic en los días para marcar · '}${añoVista}
+                </div>
+            </div>
+            ${esAñoAnterior?`<span class="archived-badge">📦 Archivado</span>`:''}
+            <div class="op-cal-total" style="${over?'color:#ef4444;background:#fee2e2':''};${esAñoAnterior?'margin-left:8px':''}">${usados} / ${max} días${over?' ⚠️':''}</div>
+        </div>
+        <div class="months-grid">`;
+
+    for(let m=0;m<12;m++){
+        const diasEnMes=new Date(añoVista,m+1,0).getDate();
+        const primerDia=(new Date(añoVista,m,1).getDay()+6)%7;
+        const k=añoVista+'_'+m,vac=op.vacaciones[k]||[];
+        const f=getFestivos(añoVista);
+        const festListaMes=f.lista.filter(x=>x.mes===m);
+
+        html+=`<div class="month-box">
+            <div class="month-name">${MESES[m]}<span class="month-count ${vac.length?'has-days':''}">${vac.length}</span></div>
+            <div class="days-wrap">
+                <div class="dow-row">${DOW.map(d=>`<div class="dow">${d}</div>`).join('')}</div>
+                <div class="days-row">${'<div></div>'.repeat(primerDia)}
+                ${Array.from({length:diasEnMes},(_,i)=>{
+                    const dia=i+1,isVac=vac.includes(dia);
+                    const festItem=festListaMes.find(x=>x.dia===dia);
+                    const isFest=!!festItem;
+                    const dow=(primerDia+i)%7,isWeek=dow>=5;
+                    const isToday=añoVista===HOY_AÑO&&m===HOY_MES&&dia===HOY_DIA;
+                    const bgVac=isVac?`background:${op.color};border-color:${op.color};color:white`:'';
+                    const bgFest=isFest&&!isVac?`background:${f.color}22;border-color:${f.color};color:${f.color}`:'';
+                    const tipFest=isFest?festItem.nombre:'';
+                    return `<div class="day${isVac?' vac':''}${isFest?' festivo':''}${isWeek&&!isVac?' weekend':''}${isToday?' today-op':''}"
+                        style="${bgVac||bgFest}"
+                        ${!esAñoAnterior?`onclick="toggleDia(${m},${dia},${añoVista})"`:''}
+                        title="${tipFest}">${dia}</div>`;
+                }).join('')}
+                </div>
+            </div>
+        </div>`;
+    }
+    html+='</div>';
+    content.innerHTML=html;
+}
+
+function renderCalendarioPrincipal() {
+    const grid=document.getElementById('yearGrid');
+    const banner=document.getElementById('calArchiveBanner');
+    const esAñoAnterior=añoVista<HOY_AÑO;
+
+    if(esAñoAnterior){
+        banner.style.display='block';
+        banner.innerHTML=`<div style="padding:12px 18px;background:#fef3c7;border:1px solid #fde68a;border-radius:10px;display:flex;align-items:center;gap:10px;font-size:14px;color:#92400e">
+            <span style="font-size:20px">📦</span>
+            <strong>Año archivado</strong> — Estás viendo el histórico de vacaciones de ${añoVista}. Solo lectura.
+        </div>`;
+    } else { banner.style.display='none'; }
+
+    if(operarios.length===0){
+        grid.innerHTML=`<div class="empty-cal"><div style="font-size:40px;margin-bottom:12px">👷</div><p style="font-size:14px">Añade operarios en "Operarios" para ver el calendario</p></div>`;
+        return;
+    }
+    grid.innerHTML='';
+    const mesesAMostrar=vistaNum===12?12:vistaNum;
+
+    for(let i=0;i<mesesAMostrar;i++){
+        const ref=mesAbsoluto(i),año=ref.año,m=ref.mes;
+        const diasEnMes=new Date(año,m+1,0).getDate();
+        const primerDia=(new Date(año,m,1).getDay()+6)%7;
+        const fAño=getFestivos(año);
+        const festListaMes=fAño.lista.filter(x=>x.mes===m);
+        const festColor=fAño.color;
+        let totalVacMes=0;
+
+        const dowHtml=`<div class="dow-week-header">S</div>`+
+            DOW.map((d,di)=>`<div class="main-dow ${di<5?'dow-wday':'dow-wend'}">${d}</div>`).join('');
+
+        let daysHtml='';
+        let dia=1,startDow=primerDia;
+
+        while(dia<=diasEnMes){
+            const semana=isoWeek(año,m,dia);
+            let rowHtml=`<div class="week-num">${semana}</div>`;
+            for(let col=0;col<7;col++){
+                if(dia===1&&col<startDow){rowHtml+='<div></div>';continue;}
+                if(dia>diasEnMes){rowHtml+='<div></div>';continue;}
+                const opsVac=operarios.filter(op=>(op.vacaciones[año+'_'+m]||[]).includes(dia));
+                const festItem=festListaMes.find(x=>x.dia===dia);
+                const isFest=!!festItem;
+                const isWeek=col>=5;
+                const isToday=año===HOY_AÑO&&m===HOY_MES&&dia===HOY_DIA;
+                if(opsVac.length>0) totalVacMes++;
+
+                if(opsVac.length===0&&!isFest){
+                    rowHtml+=`<div class="main-day free-day${isWeek?' weekend-day':''}${isToday?' today-cell':''}"><span class="day-header-num">${dia}</span></div>`;
+                } else if(opsVac.length===0&&isFest){
+                    rowHtml+=`<div class="main-day fest-day${isWeek?' weekend-day':''}${isToday?' today-cell':''}" style="background:${festColor}18;border-color:${festColor}">
+                        <span class="day-header-num" style="color:${festColor}">${dia}</span>
+                        <div class="day-ops-grid">
+                            <div class="fest-chip tip" style="background:${festColor}" data-tip="${festItem.nombre}">
+                                <span class="fest-name-label">${festItem.nombre}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                } else {
+                    const chips=opsVac.map(op=>
+                        `<div class="op-chip tip" style="background:${op.color}" data-tip="${op.nombre}"><span>${op.iniciales}</span></div>`
+                    ).join('');
+                    const festChip=isFest?`<div class="op-chip tip" style="background:${festColor}" data-tip="${festItem.nombre}"><span>F</span></div>`:'';
+                    rowHtml+=`<div class="main-day${isWeek?' weekend-day':''}${isToday?' today-cell':''}${isFest?' fest-day':''}"
+                        ${isFest?`style="border-color:${festColor}"`:''}">
+                        <span class="day-header-num">${dia}</span>
+                        <div class="day-ops-grid">${chips}${festChip}</div>
+                    </div>`;
+                }
+                dia++;
+            }
+            startDow=0;
+            daysHtml+=`<div class="main-days-row">${rowHtml}</div>`;
+        }
+
+        const box=document.createElement('div');
+        box.className='main-month-box';
+        box.innerHTML=`
+            <div class="main-month-title">
+                ${MESES[m]} ${año}
+                <span class="main-month-badge">${totalVacMes>0?totalVacMes+' día'+(totalVacMes!==1?'s':'')+' ocupados':''}</span>
+            </div>
+            <div class="main-days-wrap">
+                <div class="main-dow-row">${dowHtml}</div>
+                ${daysHtml}
+            </div>`;
+        grid.appendChild(box);
+    }
+}
+
+// ── TOOLTIP ───────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+    document.getElementById('inputNombre').addEventListener('keypress',e=>{if(e.key==='Enter')agregarOperario();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarModal();});
+    const tt=document.getElementById('vac-tooltip');
+    document.addEventListener('mouseover',e=>{const el=e.target.closest('[data-tip]');if(!el)return;tt.textContent=el.getAttribute('data-tip');tt.classList.add('visible');});
+    document.addEventListener('mousemove',e=>{const el=e.target.closest('[data-tip]');if(!el){tt.classList.remove('visible');return;}tt.style.left=e.clientX+'px';tt.style.top=(e.clientY-38)+'px';});
+    document.addEventListener('mouseout',e=>{if(!e.target.closest('[data-tip]'))tt.classList.remove('visible');});
+    cargar();
+});
+</script>
+</body>
+</html>
