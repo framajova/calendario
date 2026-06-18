@@ -477,6 +477,19 @@
             .main-dow-row, .main-days-row { grid-template-columns: 36px repeat(7, 1fr); }
         }
 
+        /* ── MODO SOLO LECTURA ── */
+        body.modo-lectura .new-op-form,
+        body.modo-lectura .op-actions,
+        body.modo-lectura .fest-add-form,
+        body.modo-lectura .fest-year-selector ~ * .fest-item-act,
+        body.modo-lectura .fest-item-act,
+        body.modo-lectura .fest-item-del,
+        body.modo-lectura #motColorPreview,
+        body.modo-lectura .btn-add {
+            display: none !important;
+        }
+        body.modo-lectura .op-item { cursor: default; }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
@@ -488,13 +501,32 @@
 
 <div class="app-header">
     <h1>📅 Vacaciones del Personal</h1>
-    <div class="nav-tabs">
-        <button class="nav-tab active" onclick="cambiarPagina('operarios',this)">👷 Operarios</button>
-        <button class="nav-tab" onclick="cambiarPagina('calendario',this)">📆 Calendario</button>
-        <button class="nav-tab" onclick="cambiarPagina('festivos',this)">🗓️ Festivos</button>
-        <button class="nav-tab" onclick="cambiarPagina('motivos',this)">🏷️ Motivos</button>
+    <div class="nav-tabs" id="navTabs">
+        <button class="nav-tab active" data-page="operarios" onclick="cambiarPagina('operarios',this)">👷 Operarios</button>
+        <button class="nav-tab" data-page="calendario" onclick="cambiarPagina('calendario',this)">📆 Calendario</button>
+        <button class="nav-tab" data-page="festivos" onclick="cambiarPagina('festivos',this)">🗓️ Festivos</button>
+        <button class="nav-tab" data-page="motivos" onclick="cambiarPagina('motivos',this)">🏷️ Motivos</button>
     </div>
-    <span style="font-size:13px;color:#888;min-width:40px;text-align:right" id="headerYear"></span>
+    <div style="display:flex;align-items:center;gap:10px">
+        <span id="modoIndicador" style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px"></span>
+        <button id="btnCambiarCred" class="tb-btn" style="padding:8px 12px;font-size:13px;display:none" onclick="abrirCambiarCredenciales()">🔑</button>
+        <button id="btnAcceso" class="tb-btn" style="padding:8px 14px;font-size:13px" onclick="abrirModalLogin()">🔒 Acceso</button>
+    </div>
+</div>
+
+<!-- MODAL LOGIN -->
+<div class="modal-backdrop" id="loginBackdrop" onclick="if(event.target===this)cerrarLogin()">
+    <div class="modal" style="width:360px" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 id="loginTitulo">🔒 Acceso de edición</h3>
+            <button class="btn-icon" onclick="cerrarLogin()" style="font-size:18px">✕</button>
+        </div>
+        <div class="modal-body" id="loginBody"></div>
+        <div class="modal-footer">
+            <button class="btn-ghost" onclick="cerrarLogin()">Cancelar</button>
+            <button class="btn-save" id="loginBtnConfirm" onclick="hacerLogin()"><span id="loginBtnTexto">Entrar</span></button>
+        </div>
+    </div>
 </div>
 
 <!-- MODAL EDITAR OPERARIO / FESTIVOS -->
@@ -665,6 +697,24 @@ let añoMot     = HOY_AÑO;  // año activo en panel motivos
 let _motivosCache = {};    // { "2026": [ {id, nombre, color} ] }
 let motColorTmp = '#0891b2'; // color del nuevo motivo en el formulario
 
+// ══════════ CONTROL DE ACCESO ══════════
+// Las credenciales del editor se crean en el primer uso y se guardan
+// en Supabase (compartidas para todos). Se pueden cambiar después
+// desde el modo edición con el botón "Cambiar credenciales".
+
+// Pestañas visibles para quien NO ha iniciado sesión (modo solo lectura).
+// Pon false en las que quieras ocultar a los visitantes.
+const VISIBLE_SIN_LOGIN = {
+    operarios: true,
+    calendario: true,
+    festivos: true,
+    motivos: true
+};
+
+let modoEdicion = false;   // false = solo lectura
+let _auth = null;          // { user, pass } guardado en Supabase
+// ════════════════════════════════════════
+
 // modalMode: 'operario' | 'festColor'
 let modalMode  = null;
 let editId     = null;
@@ -813,7 +863,7 @@ let _guardarTimer = null;
 
 async function guardar() {
     // Backup local inmediato
-    localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache, motivos: _motivosCache }));
+    localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache, motivos: _motivosCache, auth: _auth }));
     // Guardado al servidor con pequeño retardo para agrupar cambios rápidos
     clearTimeout(_guardarTimer);
     _guardarTimer = setTimeout(guardarAhora, 400);
@@ -824,7 +874,7 @@ async function guardarAhora() {
         const r = await fetch(`${SUPABASE_URL}/rest/v1/${TABLA}?id=eq.${FILA_ID}`, {
             method: 'PATCH',
             headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
-            body: JSON.stringify({ contenido: { operarios, festivos: _festivosCache, motivos: _motivosCache } })
+            body: JSON.stringify({ contenido: { operarios, festivos: _festivosCache, motivos: _motivosCache, auth: _auth } })
         });
         if (!r.ok) console.error('Error guardando en Supabase:', r.status, await r.text());
     } catch(e) { console.error('Error de conexión al guardar:', e); }
@@ -842,7 +892,8 @@ async function cargar() {
             operarios = c.operarios || [];
             _festivosCache = c.festivos || {};
             _motivosCache = c.motivos || {};
-            localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache, motivos: _motivosCache }));
+            _auth = c.auth || null;
+            localStorage.setItem('vac_backup', JSON.stringify({ operarios, festivos: _festivosCache, motivos: _motivosCache, auth: _auth }));
         } else {
             console.error('Error cargando de Supabase:', r.status);
             usarBackupLocal();
@@ -862,7 +913,7 @@ async function cargar() {
 function usarBackupLocal() {
     try {
         const d = localStorage.getItem('vac_backup');
-        if (d) { const p = JSON.parse(d); operarios = p.operarios||[]; _festivosCache = p.festivos||{}; _motivosCache = p.motivos||{}; }
+        if (d) { const p = JSON.parse(d); operarios = p.operarios||[]; _festivosCache = p.festivos||{}; _motivosCache = p.motivos||{}; _auth = p.auth||null; }
     } catch(e) {}
 }
 
@@ -883,7 +934,7 @@ function actualizarNavLabel() {
     else if(vistaNum===1) label=MESES[mesVista]+' '+añoVista;
     else { const fin=mesAbsoluto(vistaNum-1); label=MESES[mesVista]+' – '+MESES[fin.mes]+' '+fin.año; }
     document.getElementById('yearLabel').textContent=label;
-    document.getElementById('headerYear').textContent=vistaNum===12?añoVista:'';
+    const hy=document.getElementById('headerYear'); if(hy) hy.textContent=vistaNum===12?añoVista:'';
 }
 
 function mesAbsoluto(offset) {
@@ -910,6 +961,156 @@ function irAhoy() {
     añoVista=HOY_AÑO; mesVista=HOY_MES; if(vistaNum===12) mesVista=0;
     actualizarNavLabel(); renderCalendarioPrincipal();
 }
+// ══════════ LOGIN / MODO EDICIÓN ══════════
+function abrirModalLogin() {
+    if (modoEdicion) {
+        if (confirm('¿Salir del modo edición?')) { salirEdicion(); }
+        return;
+    }
+    const esPrimerUso = !_auth || !_auth.user;
+    const body = document.getElementById('loginBody');
+    const titulo = document.getElementById('loginTitulo');
+    const btnTexto = document.getElementById('loginBtnTexto');
+
+    if (esPrimerUso) {
+        titulo.textContent = '🆕 Crear credenciales';
+        btnTexto.textContent = 'Crear y entrar';
+        body.innerHTML = `
+            <p style="font-size:13px;color:#666;margin-bottom:4px">Primer uso: crea el usuario y la contraseña que permitirán editar el calendario.</p>
+            <div><div class="field-label">Nuevo usuario</div><input type="text" id="loginUser" autocomplete="username"></div>
+            <div><div class="field-label">Nueva contraseña</div><input type="password" id="loginPass" autocomplete="new-password"></div>
+            <div><div class="field-label">Repetir contraseña</div><input type="password" id="loginPass2" autocomplete="new-password"></div>
+            <p id="loginError" style="font-size:13px;color:#ef4444;display:none"></p>`;
+    } else {
+        titulo.textContent = '🔒 Acceso de edición';
+        btnTexto.textContent = 'Entrar';
+        body.innerHTML = `
+            <p style="font-size:13px;color:#666;margin-bottom:4px">Introduce tus credenciales para poder editar.</p>
+            <div><div class="field-label">Usuario</div><input type="text" id="loginUser" autocomplete="username"></div>
+            <div><div class="field-label">Contraseña</div><input type="password" id="loginPass" autocomplete="current-password"></div>
+            <p id="loginError" style="font-size:13px;color:#ef4444;display:none">Usuario o contraseña incorrectos.</p>`;
+    }
+    document.getElementById('loginBackdrop').classList.add('open');
+    setTimeout(() => {
+        document.getElementById('loginUser').focus();
+        const lp = document.getElementById('loginPass');
+        if(lp) lp.addEventListener('keypress',e=>{if(e.key==='Enter')hacerLogin();});
+        const lp2 = document.getElementById('loginPass2');
+        if(lp2) lp2.addEventListener('keypress',e=>{if(e.key==='Enter')hacerLogin();});
+    }, 100);
+}
+function cerrarLogin() { document.getElementById('loginBackdrop').classList.remove('open'); }
+
+function hacerLogin() {
+    const esPrimerUso = !_auth || !_auth.user;
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value;
+    const err = document.getElementById('loginError');
+
+    if (esPrimerUso) {
+        const p2 = document.getElementById('loginPass2').value;
+        if (!u || !p) { err.textContent='Rellena usuario y contraseña.'; err.style.display='block'; return; }
+        if (p !== p2) { err.textContent='Las contraseñas no coinciden.'; err.style.display='block'; return; }
+        if (p.length < 4) { err.textContent='La contraseña debe tener al menos 4 caracteres.'; err.style.display='block'; return; }
+        _auth = { user: u, pass: p };
+        guardar();
+        modoEdicion = true;
+        sessionStorage.setItem('vac_editor', '1');
+        cerrarLogin();
+        aplicarModo();
+    } else {
+        if (u === _auth.user && p === _auth.pass) {
+            modoEdicion = true;
+            sessionStorage.setItem('vac_editor', '1');
+            cerrarLogin();
+            aplicarModo();
+        } else {
+            err.style.display = 'block';
+        }
+    }
+}
+
+function salirEdicion() {
+    modoEdicion = false;
+    sessionStorage.removeItem('vac_editor');
+    aplicarModo();
+}
+
+// Cambiar credenciales (solo en modo edición)
+function abrirCambiarCredenciales() {
+    if (!modoEdicion) return;
+    const body = document.getElementById('loginBody');
+    document.getElementById('loginTitulo').textContent = '🔑 Cambiar credenciales';
+    document.getElementById('loginBtnTexto').textContent = 'Guardar';
+    body.innerHTML = `
+        <p style="font-size:13px;color:#666;margin-bottom:4px">Cambia el usuario y la contraseña de edición.</p>
+        <div><div class="field-label">Nuevo usuario</div><input type="text" id="ccUser" value="${(_auth&&_auth.user)||''}"></div>
+        <div><div class="field-label">Nueva contraseña</div><input type="password" id="ccPass" autocomplete="new-password"></div>
+        <div><div class="field-label">Repetir contraseña</div><input type="password" id="ccPass2" autocomplete="new-password"></div>
+        <p id="loginError" style="font-size:13px;color:#ef4444;display:none"></p>`;
+    // Cambiar el botón a la acción de guardar credenciales
+    document.getElementById('loginBtnConfirm').setAttribute('onclick','guardarCredenciales()');
+    document.getElementById('loginBackdrop').classList.add('open');
+    setTimeout(()=>document.getElementById('ccUser').focus(),100);
+}
+
+function guardarCredenciales() {
+    const u = document.getElementById('ccUser').value.trim();
+    const p = document.getElementById('ccPass').value;
+    const p2 = document.getElementById('ccPass2').value;
+    const err = document.getElementById('loginError');
+    if (!u || !p) { err.textContent='Rellena usuario y contraseña.'; err.style.display='block'; return; }
+    if (p !== p2) { err.textContent='Las contraseñas no coinciden.'; err.style.display='block'; return; }
+    if (p.length < 4) { err.textContent='La contraseña debe tener al menos 4 caracteres.'; err.style.display='block'; return; }
+    _auth = { user: u, pass: p };
+    guardar();
+    // Restaurar el onclick original del botón
+    document.getElementById('loginBtnConfirm').setAttribute('onclick','hacerLogin()');
+    cerrarLogin();
+    alert('Credenciales actualizadas correctamente.');
+}
+
+function aplicarModo() {
+    // Indicador y botón
+    const ind = document.getElementById('modoIndicador');
+    const btn = document.getElementById('btnAcceso');
+    if (modoEdicion) {
+        ind.textContent = '✏️ Edición';
+        ind.style.background = '#dcfce7'; ind.style.color = '#15803d';
+        btn.textContent = '🔓 Salir';
+        document.getElementById('btnCambiarCred').style.display = '';
+    } else {
+        ind.textContent = '👁️ Solo lectura';
+        ind.style.background = '#f3f4f6'; ind.style.color = '#6b7280';
+        btn.textContent = '🔒 Acceso';
+        document.getElementById('btnCambiarCred').style.display = 'none';
+    }
+
+    // Mostrar/ocultar pestañas según permisos en modo lectura
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        const page = tab.getAttribute('data-page');
+        const visible = modoEdicion || VISIBLE_SIN_LOGIN[page];
+        tab.style.display = visible ? '' : 'none';
+    });
+
+    // Clase global que oculta controles de edición vía CSS
+    document.body.classList.toggle('modo-lectura', !modoEdicion);
+
+    // Si la pestaña activa quedó oculta, saltar a una visible
+    const activa = document.querySelector('.nav-tab.active');
+    if (activa && activa.style.display === 'none') {
+        const primera = [...document.querySelectorAll('.nav-tab')].find(t => t.style.display !== 'none');
+        if (primera) primera.click();
+    }
+
+    // Re-render para aplicar onclick condicionales
+    renderTodo();
+    renderFestivosPanel();
+    renderMotivosPanel();
+}
+
+// ══════════════════════════════════════════
+
 function cambiarPagina(id,btn) {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
@@ -922,6 +1123,7 @@ function cambiarPagina(id,btn) {
 
 // ── OPERARIOS ─────────────────────────────────────────────────
 function agregarOperario() {
+    if(!modoEdicion) return;
     const input=document.getElementById('inputNombre');
     const nombre=input.value.trim(); if(!nombre) return;
     const iniciales=nombre.split(' ').map(p=>p[0]).join('').toUpperCase().substring(0,4);
@@ -930,6 +1132,7 @@ function agregarOperario() {
     guardar(); input.value=''; renderTodo();
 }
 function eliminarOperario(id) {
+    if(!modoEdicion) return;
     if(!confirm('¿Eliminar este operario y todas sus vacaciones?')) return;
     operarios=operarios.filter(o=>o.id!==id);
     if(selId===id) selId=null;
@@ -937,6 +1140,7 @@ function eliminarOperario(id) {
 }
 function seleccionar(id) { selId=selId===id?null:id; renderTodo(); }
 function toggleDia(mes,dia,año) {
+    if(!modoEdicion) return;
     const op=operarios.find(o=>o.id===selId); if(!op) return;
     const k=año+'_'+mes;
     const arr=op.vacaciones[k]?[...op.vacaciones[k]]:[];
@@ -969,6 +1173,7 @@ function cambiarAñoFest(delta) {
 }
 
 function agregarFestivo() {
+    if(!modoEdicion) return;
     const fechaEl = document.getElementById('festInputFecha');
     const nombreEl = document.getElementById('festInputNombre');
     const nombre = nombreEl.value.trim();
@@ -988,6 +1193,7 @@ function agregarFestivo() {
 }
 
 function eliminarFestivo(id) {
+    if(!modoEdicion) return;
     const f = getFestivos(añoFest);
     f.lista = f.lista.filter(x => x.id !== id);
     setFestivos(añoFest, f);
@@ -996,6 +1202,7 @@ function eliminarFestivo(id) {
 }
 
 function abrirModalEditarFestivo(id) {
+    if(!modoEdicion) return;
     const f = getFestivos(añoFest);
     const item = f.lista.find(x => x.id === id);
     if (!item) return;
@@ -1111,6 +1318,7 @@ function guardarModal() {
 
 /* Modal operario */
 function abrirModal(id) {
+    if(!modoEdicion) return;
     const op=operarios.find(o=>o.id===id); if(!op) return;
     editId=id; modalMode='operario';
     const [h,s,l]=hexToHsl(op.color||'#3b82f6');
@@ -1287,6 +1495,7 @@ function guardarEdicionOperario() {
 
 /* Modal color festivos */
 function abrirModalFestColor() {
+    if(!modoEdicion) return;
     const f=getFestivos(añoFest);
     modalMode='festColor';
     const [h,s,l]=hexToHsl(f.color||'#f59e0b');
@@ -1331,6 +1540,7 @@ function cambiarAñoMot(delta) {
 }
 
 function abrirModalMotColor() {
+    if(!modoEdicion) return;
     modalMode = 'motColor';
     const [h,s,l] = hexToHsl(motColorTmp || '#0891b2');
     pickerH=h; pickerS=s; pickerL=l;
@@ -1360,6 +1570,7 @@ function guardarColorMot() {
 }
 
 function agregarMotivo() {
+    if(!modoEdicion) return;
     const nombreEl = document.getElementById('motInputNombre');
     const nombre = nombreEl.value.trim();
     if (!nombre) { alert('Indica el nombre del motivo.'); return; }
@@ -1372,6 +1583,7 @@ function agregarMotivo() {
 }
 
 function eliminarMotivo(id) {
+    if(!modoEdicion) return;
     if (!confirm('¿Eliminar este motivo? Se quitará también de los operarios que lo tengan asignado este año.')) return;
     let lista = getMotivos(añoMot);
     lista = lista.filter(m => m.id !== id);
@@ -1392,6 +1604,7 @@ function eliminarMotivo(id) {
 }
 
 function abrirModalEditarMotivo(id) {
+    if(!modoEdicion) return;
     const mot = getMotivoById(añoMot, id);
     if (!mot) return;
     editId = id;
@@ -1664,12 +1877,14 @@ function renderCalendarioPrincipal() {
 // ── TOOLTIP ───────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('inputNombre').addEventListener('keypress',e=>{if(e.key==='Enter')agregarOperario();});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarModal();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){cerrarModal();cerrarLogin();}});
     const tt=document.getElementById('vac-tooltip');
     document.addEventListener('mouseover',e=>{const el=e.target.closest('[data-tip]');if(!el)return;tt.textContent=el.getAttribute('data-tip');tt.classList.add('visible');});
     document.addEventListener('mousemove',e=>{const el=e.target.closest('[data-tip]');if(!el){tt.classList.remove('visible');return;}tt.style.left=e.clientX+'px';tt.style.top=(e.clientY-38)+'px';});
     document.addEventListener('mouseout',e=>{if(!e.target.closest('[data-tip]'))tt.classList.remove('visible');});
-    cargar();
+    // Restaurar sesión de edición si la había en esta pestaña
+    modoEdicion = sessionStorage.getItem('vac_editor') === '1';
+    cargar().then(() => aplicarModo());
 });
 </script>
 </body>
