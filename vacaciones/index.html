@@ -1152,66 +1152,113 @@ function renderMotivosOperario(op) {
         return;
     }
 
-    // Asignaciones actuales del operario en añoVista
+    // Asignaciones actuales del operario en añoVista (lista de {fecha, motivoId})
     let asignaciones = [];
     Object.entries(op.motivos||{}).forEach(([k, arr]) => {
         if (!k.startsWith(añoVista+'_')) return;
         const mes = parseInt(k.split('_')[1]);
-        (arr||[]).forEach(a => asignaciones.push({ mes, dia: a.dia, motivoId: a.motivoId }));
+        (arr||[]).forEach(a => asignaciones.push({ ts: new Date(añoVista, mes, a.dia).getTime(), mes, dia: a.dia, motivoId: a.motivoId }));
     });
-    asignaciones.sort((a,b) => a.mes!==b.mes ? a.mes-b.mes : a.dia-b.dia);
+    asignaciones.sort((a,b) => a.ts - b.ts);
+
+    // Agrupar días consecutivos del mismo motivo en rangos
+    const rangos = [];
+    asignaciones.forEach(a => {
+        const ult = rangos[rangos.length-1];
+        const diaSig = ult ? ult.finTs + 86400000 : null;
+        if (ult && ult.motivoId === a.motivoId && a.ts === diaSig) {
+            ult.finTs = a.ts; ult.finMes = a.mes; ult.finDia = a.dia;
+        } else {
+            rangos.push({ motivoId: a.motivoId, iniTs: a.ts, iniMes: a.mes, iniDia: a.dia, finTs: a.ts, finMes: a.mes, finDia: a.dia });
+        }
+    });
 
     const opcionesMot = motivosAño.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
-    const listaHtml = asignaciones.length === 0
+    const fmt = (mes, dia) => `${String(dia).padStart(2,'0')}/${String(mes+1).padStart(2,'0')}`;
+    const listaHtml = rangos.length === 0
         ? '<p style="font-size:12px;color:#aaa;padding:6px 0">Sin motivos asignados</p>'
-        : asignaciones.map(a => {
-            const m = getMotivoById(añoVista, a.motivoId);
+        : rangos.map(r => {
+            const m = getMotivoById(añoVista, r.motivoId);
             if (!m) return '';
+            const esUnDia = r.iniTs === r.finTs;
+            const fechaTxt = esUnDia ? fmt(r.iniMes, r.iniDia) : `${fmt(r.iniMes,r.iniDia)} → ${fmt(r.finMes,r.finDia)}`;
+            const numDias = Math.round((r.finTs - r.iniTs)/86400000) + 1;
             return `<div class="fest-item" style="padding:6px 8px">
                 <div class="fest-item-dot" style="background:${m.color}"></div>
-                <span class="fest-item-date">${String(a.dia).padStart(2,'0')}/${String(a.mes+1).padStart(2,'0')}</span>
-                <span class="fest-item-name">${m.nombre}</span>
-                <button class="fest-item-del" onclick="quitarMotivoOperario(${a.mes},${a.dia},'${a.motivoId}')" title="Quitar">✕</button>
+                <span class="fest-item-date" style="min-width:auto">${fechaTxt}</span>
+                <span class="fest-item-name">${m.nombre}${esUnDia?'':` <span style="color:#aaa">(${numDias}d)</span>`}</span>
+                <button class="fest-item-del" onclick="quitarRangoMotivo('${r.motivoId}',${r.iniTs},${r.finTs})" title="Quitar rango">✕</button>
             </div>`;
         }).join('');
 
     cont.innerHTML = `
         <div class="field-label">Motivos especiales (${añoVista})</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-            <input type="date" id="motOpFecha" min="${añoVista}-01-01" max="${añoVista}-12-31" value="${añoVista}-01-01"
-                style="padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit">
-            <select id="motOpSelect" style="flex:1;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;background:white">${opcionesMot}</select>
-            <button class="btn-add" onclick="asignarMotivoOperario()" style="padding:8px 14px">＋</button>
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+            <div style="flex:1;min-width:130px">
+                <div style="font-size:10px;color:#888;margin-bottom:3px">Desde</div>
+                <input type="date" id="motOpDesde" min="${añoVista}-01-01" max="${añoVista}-12-31" value="${añoVista}-01-01"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit">
+            </div>
+            <div style="flex:1;min-width:130px">
+                <div style="font-size:10px;color:#888;margin-bottom:3px">Hasta</div>
+                <input type="date" id="motOpHasta" min="${añoVista}-01-01" max="${añoVista}-12-31" value="${añoVista}-01-01"
+                    style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit">
+            </div>
         </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+            <select id="motOpSelect" style="flex:1;padding:8px 10px;border:1px solid #d1d5db;border-radius:7px;font-size:13px;font-family:inherit;background:white">${opcionesMot}</select>
+            <button class="btn-add" onclick="asignarMotivoOperario()" style="padding:8px 16px">＋ Aplicar</button>
+        </div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px">Aplica el motivo a todos los días del rango (incluye fines de semana)</div>
         <div class="fest-list" style="max-height:150px;padding:0">${listaHtml}</div>`;
 }
 
 function asignarMotivoOperario() {
     const op = operarios.find(o => o.id === editId); if (!op) return;
-    const fechaVal = document.getElementById('motOpFecha').value;
+    const desdeVal = document.getElementById('motOpDesde').value;
+    const hastaVal = document.getElementById('motOpHasta').value;
     const motivoId = document.getElementById('motOpSelect').value;
-    if (!fechaVal || !motivoId) return;
-    const [yyyy, mm, dd] = fechaVal.split('-').map(Number);
-    if (yyyy !== añoVista) { alert(`La fecha debe ser del año ${añoVista}.`); return; }
+    if (!desdeVal || !hastaVal || !motivoId) return;
+
+    const desde = new Date(desdeVal + 'T00:00:00');
+    const hasta = new Date(hastaVal + 'T00:00:00');
+    if (hasta < desde) { alert('La fecha final no puede ser anterior a la inicial.'); return; }
+    if (desde.getFullYear() !== añoVista || hasta.getFullYear() !== añoVista) {
+        alert(`Las fechas deben ser del año ${añoVista}.`); return;
+    }
+
     if (!op.motivos) op.motivos = {};
-    const k = añoVista + '_' + (mm-1);
-    const arr = op.motivos[k] ? [...op.motivos[k]] : [];
-    // Si ya hay un motivo ese día, lo reemplaza
-    const idx = arr.findIndex(a => a.dia === dd);
-    if (idx > -1) arr[idx] = { dia: dd, motivoId };
-    else arr.push({ dia: dd, motivoId });
-    op.motivos[k] = arr.sort((a,b) => a.dia - b.dia);
+    // Recorrer día a día el rango
+    let cursor = new Date(desde);
+    while (cursor <= hasta) {
+        const mes = cursor.getMonth();
+        const dd = cursor.getDate();
+        const k = añoVista + '_' + mes;
+        const arr = op.motivos[k] ? [...op.motivos[k]] : [];
+        const idx = arr.findIndex(a => a.dia === dd);
+        if (idx > -1) arr[idx] = { dia: dd, motivoId };
+        else arr.push({ dia: dd, motivoId });
+        op.motivos[k] = arr.sort((a,b) => a.dia - b.dia);
+        cursor.setDate(cursor.getDate() + 1);
+    }
     guardar();
     renderMotivosOperario(op);
     renderTodo();
 }
 
-function quitarMotivoOperario(mes, dia, motivoId) {
+function quitarRangoMotivo(motivoId, iniTs, finTs) {
     const op = operarios.find(o => o.id === editId); if (!op) return;
-    const k = añoVista + '_' + mes;
-    if (op.motivos && op.motivos[k]) {
-        op.motivos[k] = op.motivos[k].filter(a => !(a.dia === dia && a.motivoId === motivoId));
-        if (op.motivos[k].length === 0) delete op.motivos[k];
+    let cursor = new Date(iniTs);
+    const fin = new Date(finTs);
+    while (cursor <= fin) {
+        const mes = cursor.getMonth();
+        const dd = cursor.getDate();
+        const k = añoVista + '_' + mes;
+        if (op.motivos && op.motivos[k]) {
+            op.motivos[k] = op.motivos[k].filter(a => !(a.dia === dd && a.motivoId === motivoId));
+            if (op.motivos[k].length === 0) delete op.motivos[k];
+        }
+        cursor.setDate(cursor.getDate() + 1);
     }
     guardar();
     renderMotivosOperario(op);
@@ -1477,6 +1524,7 @@ function renderPanelCal() {
         const k=añoVista+'_'+m,vac=op.vacaciones[k]||[];
         const f=getFestivos(añoVista);
         const festListaMes=f.lista.filter(x=>x.mes===m);
+        const motMes=(op.motivos&&op.motivos[k])||[];
 
         html+=`<div class="month-box">
             <div class="month-name">${MESES[m]}<span class="month-count ${vac.length?'has-days':''}">${vac.length}</span></div>
@@ -1487,15 +1535,19 @@ function renderPanelCal() {
                     const dia=i+1,isVac=vac.includes(dia);
                     const festItem=festListaMes.find(x=>x.dia===dia);
                     const isFest=!!festItem;
+                    const motAsig=motMes.find(a=>a.dia===dia);
+                    const mot=motAsig?getMotivoById(añoVista,motAsig.motivoId):null;
                     const dow=(primerDia+i)%7,isWeek=dow>=5;
                     const isToday=añoVista===HOY_AÑO&&m===HOY_MES&&dia===HOY_DIA;
-                    const bgVac=isVac?`background:${op.color};border-color:${op.color};color:white`:'';
-                    const bgFest=isFest&&!isVac?`background:${f.color}22;border-color:${f.color};color:${f.color}`:'';
-                    const tipFest=isFest?festItem.nombre:'';
-                    return `<div class="day${isVac?' vac':''}${isFest?' festivo':''}${isWeek&&!isVac?' weekend':''}${isToday?' today-op':''}"
-                        style="${bgVac||bgFest}"
+                    // Prioridad de color: vacaciones > motivo > festivo
+                    let estilo='', clases='', tip='';
+                    if(isVac){ estilo=`background:${op.color};border-color:${op.color};color:white`; clases=' vac'; }
+                    else if(mot){ estilo=`background:${mot.color};border-color:${mot.color};color:white`; clases=' vac'; tip=mot.nombre; }
+                    else if(isFest){ estilo=`background:${f.color}22;border-color:${f.color};color:${f.color}`; clases=' festivo'; tip=festItem.nombre; }
+                    return `<div class="day${clases}${isFest&&!isVac&&!mot?' festivo':''}${isWeek&&!isVac&&!mot?' weekend':''}${isToday?' today-op':''}"
+                        style="${estilo}"
                         ${!esAñoAnterior?`onclick="toggleDia(${m},${dia},${añoVista})"`:''}
-                        title="${tipFest}">${dia}</div>`;
+                        title="${tip}">${dia}</div>`;
                 }).join('')}
                 </div>
             </div>
