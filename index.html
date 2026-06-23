@@ -344,7 +344,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 <div class="shell">
 
 <aside class="sidebar">
-  <div class="logo">Control de Compras<span>Materia Prima v5.9</span></div>
+  <div class="logo">Control de Compras<span>Materia Prima v6.0</span></div>
   <nav style="flex:1;padding-top:6px;">
     <div class="nav-item active" onclick="showTab('calendario',this)"><i class="ti ti-calendar"></i> Calendario</div>
     <div class="nav-item" onclick="showTab('stock',this)"><i class="ti ti-chart-bar"></i> Stock y consumo</div>
@@ -483,6 +483,21 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
               <span style="font-size:11px;color:var(--text2);">Si está marcado, esas filas se descartan al importar (recomendado).</span>
             </span>
           </label>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Materiales equivalentes</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5;">
+            Relaciona dos materias que son el mismo producto con distinto nombre. Se tratan como una sola: se <strong>suma su stock y su consumo</strong> y aparecen en una única fila (con el nombre de la materia de la receta). Útil cuando la receta usa una y el stock está en otra.
+          </div>
+          <div id="cfg-equivs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input id="cfg-eq-rec" type="text" list="comp-datalist-cfg" autocomplete="off" placeholder="Material de la receta (principal)…" style="flex:1;min-width:200px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);">
+            <i class="ti ti-arrows-left-right" style="color:var(--text3);"></i>
+            <input id="cfg-eq-stk" type="text" list="comp-datalist-cfg" autocomplete="off" placeholder="Material equivalente (del stock)…" style="flex:1;min-width:200px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);">
+            <button class="btn btn-dark" onclick="addEquiv()"><i class="ti ti-plus"></i> Enlazar</button>
+          </div>
+          <datalist id="comp-datalist-cfg"></datalist>
         </div>
 
         <div style="display:flex;align-items:center;gap:12px;">
@@ -640,7 +655,11 @@ const XMAP_EXACT={
 //   se importan al inventario (ropa/calzado, limpieza/químicos, mantenimiento…).
 //   Las materias de receta SIEMPRE se importan, aunque estén en estas ubicaciones.
 // - excluirNoConforme: si true, se descartan las filas en ubicación "NO CONFORME".
-const CONFIG_DEFAULT={excluirCategorias:['ROPA','CALZADO','QUIMIC','MANTENIMIENTO'],excluirNoConforme:true};
+const CONFIG_DEFAULT={excluirCategorias:['ROPA','CALZADO','QUIMIC','MANTENIMIENTO'],excluirNoConforme:true,
+  equivalencias:[
+    {principal:'margarina_crema',equivalente:'margarina'},      // misma MARGARINA CREMA
+    {principal:'azucar_bigbag',equivalente:'azucar_blanquilla'}  // mismo AZUCAR BLANQUILLA SACAROSA BIG BAG
+  ]};
 let config=JSON.parse(JSON.stringify(CONFIG_DEFAULT));
 const SF={tostada_fb:14500,leche_desnatada:6422.66,azucar_pi:1076.48,azucar_sacos:14000,margarina:22338,cgel:0,margarina_crema:0,aceite_girasol:0,white_biscuit:8000,azucar_polvo:5760,azucar_blanquilla:5761,guar_gum:69.91,sal_fina:70.91,canela:15.17,harina:25440.67,almidon:6344.75,verol:1193.017,novamyl:1339.5,aceite:4111.45,azucar_bigbag:22295.76,trehalosa:1138.23,aroma_vainilla:277.91,aroma_mango:277.91,futurals_green:277.91,burnt_sugar:278.91,natural_brown:277.91,maracuya:277.91,fruitmax_red:277.91,futurals_yellow:277.91,exberry_yellow:277.91};
 let stock={...SF},stockNombres={},stockCodigos={},stockDate=null,pending=null;
@@ -695,6 +714,7 @@ function applyState(s){
   if(s.config&&typeof s.config==='object'){
     if(Array.isArray(s.config.excluirCategorias))config.excluirCategorias=s.config.excluirCategorias.map(x=>String(x).toUpperCase());
     if(typeof s.config.excluirNoConforme==='boolean')config.excluirNoConforme=s.config.excluirNoConforme;
+    if(Array.isArray(s.config.equivalencias))config.equivalencias=s.config.equivalencias.filter(r=>r&&r.principal&&r.equivalente);
   }
   if('stockDate'in s)stockDate=s.stockDate;
   if(s.prog&&typeof s.prog==='object')prog=s.prog;
@@ -725,37 +745,32 @@ function applyState(s){
     }
   }
   if(typeof rebuildXMAP==='function')rebuildXMAP();
-  normalizaComponentes();
+  if(!Array.isArray(config.equivalencias))config.equivalencias=JSON.parse(JSON.stringify(CONFIG_DEFAULT.equivalencias));
+  buildEquiv();
 }
-// Corrige materiales duplicados: el mismo producto físico dado de alta con dos
-// referencias internas distintas hacía que el import solo actualizara una y la otra
-// disparara alertas falsas. Aquí se unifican en una sola referencia (canónica) y se
-// fusiona su stock. Es idempotente: se puede ejecutar en cada carga sin efectos.
-const ALIAS_COMPONENTES={
-  margarina:'margarina_crema',      // misma MARGARINA CREMA (se actualiza con código [1015])
-  azucar_blanquilla:'azucar_bigbag' // mismo AZUCAR BLANQUILLA SACAROSA BIG BAG
-  // (el aceite de girasol del depósito se mantiene SEPARADO del [1006] a propósito)
-};
-function normalizaComponentes(){
-  // código x de cada id canónico (el primero que aparezca en las recetas)
-  const xDe={};
-  for(const r of RECETAS)for(const i of r.ingredientes){if(i.x&&!xDe[i.id])xDe[i.id]=i.x;}
-  // remapear los ingredientes duplicados a su id canónico
-  for(const r of RECETAS)for(const i of r.ingredientes){
-    const canon=ALIAS_COMPONENTES[i.id];
-    if(canon){i.id=canon;if(xDe[canon])i.x=xDe[canon];}
-  }
-  // fusionar stock/nombres/códigos: el valor bueno es el del canónico (lo actualiza el import)
-  for(const dup in ALIAS_COMPONENTES){
-    const canon=ALIAS_COMPONENTES[dup];
-    if(stock[dup]!=null){if(stock[canon]==null)stock[canon]=stock[dup];delete stock[dup];}
-    if(stockNombres&&stockNombres[dup])delete stockNombres[dup];
-    if(stockCodigos&&stockCodigos[dup]){if(!stockCodigos[canon])stockCodigos[canon]=stockCodigos[dup];delete stockCodigos[dup];}
-  }
-  // remapear también las materias asignadas a proveedores
-  for(const pv of proveedores)pv.materias=[...new Set((pv.materias||[]).map(m=>ALIAS_COMPONENTES[m]||m))];
-  if(typeof rebuildXMAP==='function')rebuildXMAP();
+
+// ===== Equivalencias entre materias primas =====
+// Dos materiales marcados como equivalentes se tratan como EL MISMO: se suma su
+// stock y su consumo, y se muestran en una sola fila (con el nombre del principal,
+// que es la materia de la receta). Se definen desde Configuración y se aplican solo
+// en el cálculo/vista (no se tocan los datos), así que son reversibles.
+let _canonMap={},_members={};
+function buildEquiv(){
+  _canonMap={};_members={};
+  const rels=Array.isArray(config.equivalencias)?config.equivalencias:[];
+  for(const r of rels){if(r&&r.principal&&r.equivalente&&r.principal!==r.equivalente)_canonMap[r.equivalente]=r.principal;}
+  // resolver cadenas (equivalente -> ... -> principal)
+  const resolve=(id)=>{let seen=new Set();while(_canonMap[id]&&!seen.has(id)){seen.add(id);id=_canonMap[id];}return id;};
+  _canonMap._resolve=resolve;
+  // miembros de cada principal
+  const ids=new Set();
+  for(const r of rels){if(r&&r.principal&&r.equivalente){ids.add(r.principal);ids.add(r.equivalente);}}
+  for(const id of ids){const cv=resolve(id);(_members[cv]=_members[cv]||new Set()).add(id);_members[cv].add(cv);}
 }
+function canon(id){return _canonMap._resolve?_canonMap._resolve(id):id;}
+function membersOf(cid){return _members[cid]?[..._members[cid]]:[cid];}
+function stockDe(cid){ // stock combinado del grupo (suma de todos los miembros)
+  const ms=membersOf(cid);let s=0;for(const m of ms)s+=stock[m]||0;return s;}
 let _saveTimer=null;
 function saveState(){
   const s=collectState();
@@ -782,13 +797,14 @@ async function loadState(){
 }
 // ─────────────────────────────────────────────────────────────────
 
-function getProvForMat(id){return proveedores.find(p=>p.materias.includes(id));}
+function getProvForMat(id){const set=new Set(membersOf(canon(id)));set.add(id);return proveedores.find(p=>p.materias.some(m=>set.has(m)));}
 
 // Pedidos de una materia con su fecha de LLEGADA (fecha pedido + plazo proveedor)
 function pedidosLlegada(matId){
+  const set=new Set(membersOf(canon(matId)));set.add(matId);
   const res=[];
   for(const p of pedidos){
-    if(p.matId!==matId)continue;
+    if(!set.has(p.matId))continue;
     const prov=proveedores.find(x=>x.id===p.provId);
     const lleg=new Date(p.fecha+'T12:00:00');
     if(prov)lleg.setDate(lleg.getDate()+prov.dias);
@@ -797,10 +813,11 @@ function pedidosLlegada(matId){
   return res;
 }
 function calcAgotamiento(matId){
+  matId=canon(matId);
   // Recorre las semanas consumiendo el stock programado, SUMANDO los pedidos
   // que llegan en cada momento. Devuelve cuándo se queda el stock en negativo
   // (ya contando los pedidos), o null si el stock + pedidos cubren todo.
-  let stockRest=stock[matId]||0;
+  let stockRest=stockDe(matId);
   const today=new Date();today.setHours(0,0,0,0);
   const llegadas=pedidosLlegada(matId);   // entradas futuras de stock
 
@@ -843,7 +860,7 @@ function getWeeks(yr,mo){const ws=[],seen=new Set();const dim=new Date(yr,mo+1,0
 function fd(d){return `${d.getDate()} ${['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][d.getMonth()]}`;}
 // kg de masa que produce una entrada en un turno = HORAS × velocidad (kg/h)
 function kgPorTurno(e){return HORAS*((e&&e.v)||VEL_DEF);}
-function calcC(entries){const c={};for(const e of entries){const r=RECETAS.find(x=>x.id===e.rid);if(!r)continue;const nm=(e.t*kgPorTurno(e))/(r.pesoMasa||425);for(const i of r.ingredientes){if(!c[i.id])c[i.id]={nombre:i.nombre,kg:0};c[i.id].kg+=i.kgMasa*nm;}}return c;}
+function calcC(entries){const c={};const allI=allIng();for(const e of entries){const r=RECETAS.find(x=>x.id===e.rid);if(!r)continue;const nm=(e.t*kgPorTurno(e))/(r.pesoMasa||425);for(const i of r.ingredientes){const cid=canon(i.id);if(!c[cid])c[cid]={nombre:allI[cid]||i.nombre,kg:0};c[cid].kg+=i.kgMasa*nm;}}return c;}
 function kgTotal(entries){return entries.reduce((s,e)=>s+e.t*kgPorTurno(e),0);}
 function masasTotal(entries){return entries.reduce((s,e)=>{const r=RECETAS.find(x=>x.id===e.rid);return s+(e.t*kgPorTurno(e))/((r&&r.pesoMasa)||425);},0);}
 function allIng(){const m={};for(const r of RECETAS)for(const i of r.ingredientes)if(!m[i.id])m[i.id]=i.nombre;return m;}
@@ -971,16 +988,17 @@ function renderStock(){
     sel.value=stockFiltroReceta;
   }
   // Si hay filtro activo, restringir a los componentes de esa receta.
-  const filtroIds=stockFiltroReceta?new Set((RECETAS.find(r=>r.id===stockFiltroReceta)||{ingredientes:[]}).ingredientes.map(i=>i.id)):null;
+  const filtroIds=stockFiltroReceta?new Set((RECETAS.find(r=>r.id===stockFiltroReceta)||{ingredientes:[]}).ingredientes.map(i=>canon(i.id))):null;
   const busq=normStr(document.getElementById('stock-search')?document.getElementById('stock-search').value:''); // texto del buscador
-  // Build full list: all ingredients in recipes + any extra stock imported
-  const allIds=new Set([...Object.keys(allI),...Object.keys(stock).filter(k=>stock[k]>0)]);
+  // Build full list: all ingredients in recipes + any extra stock imported, agrupando
+  // los materiales equivalentes bajo su principal (una sola fila por grupo).
+  const allIds=new Set([...Object.keys(allI),...Object.keys(stock).filter(k=>stock[k]>0)].map(canon));
   for(const id of allIds){
     if(filtroIds&&!filtroIds.has(id))continue; // filtro por fabricación seleccionada
     const nom=allI[id]||stockNombres[id]||id;
     if(busq&&!normStr(nom).includes(busq))continue; // filtro por texto del buscador
     const cons=c[id]?c[id].kg:0;
-    const st=stock[id]||0;
+    const st=stockDe(id);
     // Skip if no stock and no consumption — nothing to show
     if(st===0&&cons===0)continue;
     const rest=st-cons;const pct=st>0?rest/st:-1;
@@ -1045,7 +1063,7 @@ function renderAlerts(c){
   const today=new Date();today.setHours(0,0,0,0);
   const items=[];
   for(const [id,d] of Object.entries(c)){
-    const st=stock[id]||0;const rest=st-d.kg;const pct=st>0?rest/st:-1;
+    const st=stockDe(id);const rest=st-d.kg;const pct=st>0?rest/st:-1;
     const prov=getProvForMat(id);const agot=calcAgotamiento(id);
     const nextP=getNextPedidoForMat(id);
     // Es alerta si: se agota pese a los pedidos (agot != null),
@@ -1697,6 +1715,43 @@ function renderConfig(){
     cats.appendChild(tag);
   });
   document.getElementById('cfg-nc').checked=!!config.excluirNoConforme;
+  renderEquivs();
+}
+// Nombre legible de una materia (recetas o stock)
+function nombreMat(id){const allI=allIng();return allI[id]||stockNombres[id]||id;}
+function renderEquivs(){
+  const cont=document.getElementById('cfg-equivs');if(!cont)return;
+  // poblar el buscador de materiales
+  const dl=document.getElementById('comp-datalist-cfg');
+  if(dl){const comps=listaComponentes();dl.innerHTML=comps.map(co=>`<option value="${escAttr(co.nombre)}"></option>`).join('');}
+  const rels=config.equivalencias||[];
+  if(!rels.length){cont.innerHTML='<span style="font-size:11px;color:var(--text3);">Sin equivalencias definidas.</span>';return;}
+  cont.innerHTML='';
+  rels.forEach((r,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:11px;';
+    row.innerHTML=`<span style="font-weight:600;">${nombreMat(r.principal).toUpperCase()}</span>
+      <i class="ti ti-arrows-left-right" style="color:var(--text3);"></i>
+      <span>${nombreMat(r.equivalente).toUpperCase()}</span>
+      <button title="Quitar" onclick="removeEquiv(${i})" style="margin-left:auto;border:0;background:transparent;color:var(--danger-tx);cursor:pointer;display:inline-flex;align-items:center;padding:0;font-size:15px;line-height:1;">&times;</button>`;
+    cont.appendChild(row);
+  });
+}
+function addEquiv(){
+  const rec=document.getElementById('cfg-eq-rec'),stk=document.getElementById('cfg-eq-stk');
+  const resolver=buildMatResolver();
+  const idP=resolver[normStr(rec.value)],idE=resolver[normStr(stk.value)];
+  if(!idP||!idE){alert('Elige los dos materiales de la lista (escribe y selecciona una opción).');return;}
+  if(idP===idE){alert('Tienen que ser dos materiales distintos.');return;}
+  if(!Array.isArray(config.equivalencias))config.equivalencias=[];
+  if(config.equivalencias.some(r=>(r.principal===idP&&r.equivalente===idE)||(r.principal===idE&&r.equivalente===idP))){alert('Esa relación ya existe.');return;}
+  config.equivalencias.push({principal:idP,equivalente:idE});
+  rec.value='';stk.value='';
+  buildEquiv();saveState();renderEquivs();renderStock();cfgSaved();
+}
+function removeEquiv(i){
+  config.equivalencias.splice(i,1);
+  buildEquiv();saveState();renderEquivs();renderStock();cfgSaved();
 }
 function cfgSaved(){const el=document.getElementById('cfg-saved');if(!el)return;el.style.opacity='1';clearTimeout(cfgSaved._t);cfgSaved._t=setTimeout(()=>el.style.opacity='0',1600);}
 function addCat(){
@@ -1712,7 +1767,7 @@ function toggleNC(){config.excluirNoConforme=document.getElementById('cfg-nc').c
 function resetConfig(){
   if(!confirm('¿Restaurar la configuración a los valores por defecto?'))return;
   config=JSON.parse(JSON.stringify(CONFIG_DEFAULT));
-  saveState();renderConfig();cfgSaved();
+  buildEquiv();saveState();renderConfig();renderStock();cfgSaved();
 }
 
 function showTab(id,el){
@@ -1948,7 +2003,7 @@ function deletePedido(id){
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Carga el estado compartido desde el servidor (o respaldo local) y pinta todo.
-loadState().then(()=>{normalizaComponentes();renderCal();renderStock();renderPedidos();}).catch(()=>{normalizaComponentes();renderCal();renderStock();renderPedidos();});
+loadState().then(()=>{buildEquiv();renderCal();renderStock();renderPedidos();}).catch(()=>{buildEquiv();renderCal();renderStock();renderPedidos();});
 </script>
 </body>
 </html>
