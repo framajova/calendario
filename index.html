@@ -344,7 +344,7 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
 <div class="shell">
 
 <aside class="sidebar">
-  <div class="logo">Control de Compras<span>Materia Prima v6.0</span></div>
+  <div class="logo">Control de Compras<span>Materia Prima v6.1</span></div>
   <nav style="flex:1;padding-top:6px;">
     <div class="nav-item active" onclick="showTab('calendario',this)"><i class="ti ti-calendar"></i> Calendario</div>
     <div class="nav-item" onclick="showTab('stock',this)"><i class="ti ti-chart-bar"></i> Stock y consumo</div>
@@ -492,12 +492,12 @@ input,select,button,textarea{font-family:var(--font);text-transform:uppercase;}
           </div>
           <div id="cfg-equivs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <input id="cfg-eq-rec" type="text" list="comp-datalist-cfg" autocomplete="off" placeholder="Material de la receta (principal)…" style="flex:1;min-width:200px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);">
+            <select id="cfg-eq-rec" style="flex:1;min-width:220px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);"></select>
             <i class="ti ti-arrows-left-right" style="color:var(--text3);"></i>
-            <input id="cfg-eq-stk" type="text" list="comp-datalist-cfg" autocomplete="off" placeholder="Material equivalente (del stock)…" style="flex:1;min-width:200px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);">
+            <select id="cfg-eq-stk" style="flex:1;min-width:220px;font-size:12px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);"></select>
             <button class="btn btn-dark" onclick="addEquiv()"><i class="ti ti-plus"></i> Enlazar</button>
           </div>
-          <datalist id="comp-datalist-cfg"></datalist>
+          <div style="font-size:10px;color:var(--text3);margin-top:8px;">Elige cada ficha por su nombre y su stock. Si el mismo producto aparece dos veces (mismo nombre), aquí podrás distinguirlas por los kilos y enlazarlas.</div>
         </div>
 
         <div style="display:flex;align-items:center;gap:12px;">
@@ -1719,34 +1719,50 @@ function renderConfig(){
 }
 // Nombre legible de una materia (recetas o stock)
 function nombreMat(id){const allI=allIng();return allI[id]||stockNombres[id]||id;}
+// Lista TODAS las fichas por separado (sin fusionar por nombre), con su stock individual.
+// Así dos fichas con el mismo nombre se pueden distinguir y enlazar.
+function listaMatIds(){
+  const allI=allIng();const ids=new Set([...Object.keys(allI),...Object.keys(stock)]);
+  const arr=[...ids].map(id=>({id,nombre:(allI[id]||stockNombres[id]||id),st:stock[id]||0}));
+  arr.sort((a,b)=>a.nombre.localeCompare(b.nombre)||b.st-a.st);
+  return arr;
+}
+function optsMat(selId){
+  const items=listaMatIds();
+  return `<option value="">— elegir material —</option>`+items.map(m=>{
+    const kg=m.st>0?Math.round(m.st).toLocaleString()+' kg':'sin stock';
+    return `<option value="${escAttr(m.id)}">${escAttr(m.nombre.toUpperCase())} — ${kg}</option>`;
+  }).join('');
+}
 function renderEquivs(){
   const cont=document.getElementById('cfg-equivs');if(!cont)return;
-  // poblar el buscador de materiales
-  const dl=document.getElementById('comp-datalist-cfg');
-  if(dl){const comps=listaComponentes();dl.innerHTML=comps.map(co=>`<option value="${escAttr(co.nombre)}"></option>`).join('');}
+  // poblar los desplegables (cada ficha por separado, con su stock)
+  const selR=document.getElementById('cfg-eq-rec'),selS=document.getElementById('cfg-eq-stk');
+  if(selR)selR.innerHTML=optsMat('rec');
+  if(selS)selS.innerHTML=optsMat('stk');
   const rels=config.equivalencias||[];
   if(!rels.length){cont.innerHTML='<span style="font-size:11px;color:var(--text3);">Sin equivalencias definidas.</span>';return;}
   cont.innerHTML='';
   rels.forEach((r,i)=>{
+    const sp=stock[r.principal]||0, se=stock[r.equivalente]||0;
+    const fmt=(v)=>v>0?Math.round(v).toLocaleString()+' kg':'0 kg';
     const row=document.createElement('div');
     row.style.cssText='display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;font-size:11px;';
-    row.innerHTML=`<span style="font-weight:600;">${nombreMat(r.principal).toUpperCase()}</span>
+    row.innerHTML=`<span style="font-weight:600;">${nombreMat(r.principal).toUpperCase()}</span><span style="color:var(--text3);">(${fmt(sp)})</span>
       <i class="ti ti-arrows-left-right" style="color:var(--text3);"></i>
-      <span>${nombreMat(r.equivalente).toUpperCase()}</span>
+      <span>${nombreMat(r.equivalente).toUpperCase()}</span><span style="color:var(--text3);">(${fmt(se)})</span>
       <button title="Quitar" onclick="removeEquiv(${i})" style="margin-left:auto;border:0;background:transparent;color:var(--danger-tx);cursor:pointer;display:inline-flex;align-items:center;padding:0;font-size:15px;line-height:1;">&times;</button>`;
     cont.appendChild(row);
   });
 }
 function addEquiv(){
-  const rec=document.getElementById('cfg-eq-rec'),stk=document.getElementById('cfg-eq-stk');
-  const resolver=buildMatResolver();
-  const idP=resolver[normStr(rec.value)],idE=resolver[normStr(stk.value)];
-  if(!idP||!idE){alert('Elige los dos materiales de la lista (escribe y selecciona una opción).');return;}
-  if(idP===idE){alert('Tienen que ser dos materiales distintos.');return;}
+  const idP=document.getElementById('cfg-eq-rec').value, idE=document.getElementById('cfg-eq-stk').value;
+  if(!idP||!idE){alert('Elige los dos materiales en los desplegables.');return;}
+  if(idP===idE){alert('Has elegido la misma ficha en los dos lados. Elige las dos fichas distintas (fíjate en los kilos para diferenciarlas).');return;}
   if(!Array.isArray(config.equivalencias))config.equivalencias=[];
   if(config.equivalencias.some(r=>(r.principal===idP&&r.equivalente===idE)||(r.principal===idE&&r.equivalente===idP))){alert('Esa relación ya existe.');return;}
   config.equivalencias.push({principal:idP,equivalente:idE});
-  rec.value='';stk.value='';
+  document.getElementById('cfg-eq-rec').value='';document.getElementById('cfg-eq-stk').value='';
   buildEquiv();saveState();renderEquivs();renderStock();cfgSaved();
 }
 function removeEquiv(i){
