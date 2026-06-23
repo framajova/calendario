@@ -1351,11 +1351,11 @@ function listaComponentes(){
     if(!m[k])m[k]={nombre:String(nombre).toUpperCase(),cod:cod||'',stock:st||0};
     else{if(!m[k].cod&&cod)m[k].cod=cod;if((st||0)>m[k].stock)m[k].stock=st||0;}
   };
-  for(const r of RECETAS)for(const i of r.ingredientes)put(i.nombre,i.x||'',stock[i.id]||0);
+  for(const r of RECETAS)for(const i of r.ingredientes)put(i.nombre,i.x||'',stockDe(canon(i.id)));
   const allI=allIng();
   for(const id of Object.keys(stock)){
     const nom=stockNombres[id]||allI[id];if(!nom)continue;
-    put(nom,stockCodigos[id]||'',stock[id]||0);
+    put(nom,stockCodigos[id]||'',stockDe(canon(id)));
   }
   return Object.values(m).sort((a,b)=>a.nombre.localeCompare(b.nombre));
 }
