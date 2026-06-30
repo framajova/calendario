@@ -712,7 +712,12 @@ const VISIBLE_SIN_LOGIN = {
 };
 
 let modoEdicion = false;   // false = solo lectura
-let _auth = null;          // { user, pass } guardado en Supabase
+let _auth = null;          // { user, pass, pregunta, respuesta } guardado en Supabase
+
+// 🔐 CLAVE MAESTRA DE EMERGENCIA — solo tú la conoces.
+// Sirve SIEMPRE para resetear las credenciales aunque se olviden.
+// Cámbiala por la que quieras (apúntala en lugar seguro):
+const CLAVE_MAESTRA = 'MAESTRA-2026';
 // ════════════════════════════════════════
 
 // modalMode: 'operario' | 'festColor'
@@ -975,20 +980,27 @@ function abrirModalLogin() {
     if (esPrimerUso) {
         titulo.textContent = '🆕 Crear credenciales';
         btnTexto.textContent = 'Crear y entrar';
+        document.getElementById('loginBtnConfirm').setAttribute('onclick','hacerLogin()');
         body.innerHTML = `
             <p style="font-size:13px;color:#666;margin-bottom:4px">Primer uso: crea el usuario y la contraseña que permitirán editar el calendario.</p>
             <div><div class="field-label">Nuevo usuario</div><input type="text" id="loginUser" autocomplete="username"></div>
             <div><div class="field-label">Nueva contraseña</div><input type="password" id="loginPass" autocomplete="new-password"></div>
             <div><div class="field-label">Repetir contraseña</div><input type="password" id="loginPass2" autocomplete="new-password"></div>
+            <hr style="border:none;border-top:1px solid #eee;margin:4px 0">
+            <div><div class="field-label">Pregunta de seguridad</div><input type="text" id="loginPreg" placeholder="Ej. ¿Nombre de mi primera mascota?"></div>
+            <div><div class="field-label">Respuesta</div><input type="text" id="loginResp" placeholder="La respuesta que recordarás"></div>
+            <p style="font-size:11px;color:#aaa">La pregunta servirá para recuperar el acceso si olvidas la contraseña.</p>
             <p id="loginError" style="font-size:13px;color:#ef4444;display:none"></p>`;
     } else {
         titulo.textContent = '🔒 Acceso de edición';
         btnTexto.textContent = 'Entrar';
+        document.getElementById('loginBtnConfirm').setAttribute('onclick','hacerLogin()');
         body.innerHTML = `
             <p style="font-size:13px;color:#666;margin-bottom:4px">Introduce tus credenciales para poder editar.</p>
             <div><div class="field-label">Usuario</div><input type="text" id="loginUser" autocomplete="username"></div>
             <div><div class="field-label">Contraseña</div><input type="password" id="loginPass" autocomplete="current-password"></div>
-            <p id="loginError" style="font-size:13px;color:#ef4444;display:none">Usuario o contraseña incorrectos.</p>`;
+            <p id="loginError" style="font-size:13px;color:#ef4444;display:none">Usuario o contraseña incorrectos.</p>
+            <p style="margin-top:4px"><a href="#" onclick="abrirRecuperar();return false;" style="font-size:13px;color:#3b82f6;text-decoration:none">¿Olvidaste la contraseña?</a></p>`;
     }
     document.getElementById('loginBackdrop').classList.add('open');
     setTimeout(() => {
@@ -1009,10 +1021,13 @@ function hacerLogin() {
 
     if (esPrimerUso) {
         const p2 = document.getElementById('loginPass2').value;
+        const preg = document.getElementById('loginPreg').value.trim();
+        const resp = document.getElementById('loginResp').value.trim();
         if (!u || !p) { err.textContent='Rellena usuario y contraseña.'; err.style.display='block'; return; }
         if (p !== p2) { err.textContent='Las contraseñas no coinciden.'; err.style.display='block'; return; }
         if (p.length < 4) { err.textContent='La contraseña debe tener al menos 4 caracteres.'; err.style.display='block'; return; }
-        _auth = { user: u, pass: p };
+        if (!preg || !resp) { err.textContent='Define la pregunta y respuesta de seguridad.'; err.style.display='block'; return; }
+        _auth = { user: u, pass: p, pregunta: preg, respuesta: resp };
         guardar();
         modoEdicion = true;
         sessionStorage.setItem('vac_editor', '1');
@@ -1043,12 +1058,14 @@ function abrirCambiarCredenciales() {
     document.getElementById('loginTitulo').textContent = '🔑 Cambiar credenciales';
     document.getElementById('loginBtnTexto').textContent = 'Guardar';
     body.innerHTML = `
-        <p style="font-size:13px;color:#666;margin-bottom:4px">Cambia el usuario y la contraseña de edición.</p>
+        <p style="font-size:13px;color:#666;margin-bottom:4px">Cambia el usuario, la contraseña y la pregunta de seguridad.</p>
         <div><div class="field-label">Nuevo usuario</div><input type="text" id="ccUser" value="${(_auth&&_auth.user)||''}"></div>
         <div><div class="field-label">Nueva contraseña</div><input type="password" id="ccPass" autocomplete="new-password"></div>
         <div><div class="field-label">Repetir contraseña</div><input type="password" id="ccPass2" autocomplete="new-password"></div>
+        <hr style="border:none;border-top:1px solid #eee;margin:4px 0">
+        <div><div class="field-label">Pregunta de seguridad</div><input type="text" id="ccPreg" value="${((_auth&&_auth.pregunta)||'').replace(/"/g,'&quot;')}"></div>
+        <div><div class="field-label">Respuesta</div><input type="text" id="ccResp" value="${((_auth&&_auth.respuesta)||'').replace(/"/g,'&quot;')}"></div>
         <p id="loginError" style="font-size:13px;color:#ef4444;display:none"></p>`;
-    // Cambiar el botón a la acción de guardar credenciales
     document.getElementById('loginBtnConfirm').setAttribute('onclick','guardarCredenciales()');
     document.getElementById('loginBackdrop').classList.add('open');
     setTimeout(()=>document.getElementById('ccUser').focus(),100);
@@ -1058,16 +1075,89 @@ function guardarCredenciales() {
     const u = document.getElementById('ccUser').value.trim();
     const p = document.getElementById('ccPass').value;
     const p2 = document.getElementById('ccPass2').value;
+    const preg = document.getElementById('ccPreg').value.trim();
+    const resp = document.getElementById('ccResp').value.trim();
     const err = document.getElementById('loginError');
     if (!u || !p) { err.textContent='Rellena usuario y contraseña.'; err.style.display='block'; return; }
     if (p !== p2) { err.textContent='Las contraseñas no coinciden.'; err.style.display='block'; return; }
     if (p.length < 4) { err.textContent='La contraseña debe tener al menos 4 caracteres.'; err.style.display='block'; return; }
-    _auth = { user: u, pass: p };
+    if (!preg || !resp) { err.textContent='Define la pregunta y respuesta de seguridad.'; err.style.display='block'; return; }
+    _auth = { user: u, pass: p, pregunta: preg, respuesta: resp };
     guardar();
-    // Restaurar el onclick original del botón
     document.getElementById('loginBtnConfirm').setAttribute('onclick','hacerLogin()');
     cerrarLogin();
     alert('Credenciales actualizadas correctamente.');
+}
+
+// ── RECUPERACIÓN DE CONTRASEÑA ──
+function abrirRecuperar() {
+    const body = document.getElementById('loginBody');
+    document.getElementById('loginTitulo').textContent = '🔓 Recuperar acceso';
+    document.getElementById('loginBtnTexto').textContent = 'Recuperar';
+    const pregunta = (_auth && _auth.pregunta) || '(no definida)';
+    body.innerHTML = `
+        <p style="font-size:13px;color:#666;margin-bottom:4px">Responde a la pregunta de seguridad <strong>o</strong> introduce la clave maestra de emergencia.</p>
+        <div style="background:#f8f9fb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:4px">
+            <div class="field-label" style="margin-bottom:4px">Pregunta de seguridad</div>
+            <div style="font-size:14px;font-weight:600;color:#374151">${pregunta}</div>
+        </div>
+        <div><div class="field-label">Tu respuesta</div><input type="text" id="recResp"></div>
+        <div style="text-align:center;font-size:12px;color:#aaa;margin:2px 0">— o —</div>
+        <div><div class="field-label">Clave maestra de emergencia</div><input type="password" id="recMaestra"></div>
+        <p id="loginError" style="font-size:13px;color:#ef4444;display:none"></p>`;
+    document.getElementById('loginBtnConfirm').setAttribute('onclick','hacerRecuperar()');
+    setTimeout(()=>document.getElementById('recResp').focus(),100);
+}
+
+function hacerRecuperar() {
+    const resp = document.getElementById('recResp').value.trim();
+    const maestra = document.getElementById('recMaestra').value;
+    const err = document.getElementById('loginError');
+
+    const respOK = _auth && _auth.respuesta && resp &&
+                   resp.toLowerCase() === _auth.respuesta.toLowerCase();
+    const maestraOK = maestra && maestra === CLAVE_MAESTRA;
+
+    if (respOK || maestraOK) {
+        // Acceso concedido para resetear → pide nueva contraseña
+        document.getElementById('loginBtnConfirm').setAttribute('onclick','hacerLogin()');
+        abrirResetPassword();
+    } else {
+        err.textContent = 'Respuesta incorrecta y clave maestra inválida.';
+        err.style.display = 'block';
+    }
+}
+
+function abrirResetPassword() {
+    const body = document.getElementById('loginBody');
+    document.getElementById('loginTitulo').textContent = '🔑 Nueva contraseña';
+    document.getElementById('loginBtnTexto').textContent = 'Guardar y entrar';
+    body.innerHTML = `
+        <p style="font-size:13px;color:#16a34a;margin-bottom:4px">✓ Identidad verificada. Define una nueva contraseña.</p>
+        <div><div class="field-label">Usuario</div><input type="text" id="rsUser" value="${(_auth&&_auth.user)||''}"></div>
+        <div><div class="field-label">Nueva contraseña</div><input type="password" id="rsPass" autocomplete="new-password"></div>
+        <div><div class="field-label">Repetir contraseña</div><input type="password" id="rsPass2" autocomplete="new-password"></div>
+        <p id="loginError" style="font-size:13px;color:#ef4444;display:none"></p>`;
+    document.getElementById('loginBtnConfirm').setAttribute('onclick','guardarResetPassword()');
+    setTimeout(()=>document.getElementById('rsPass').focus(),100);
+}
+
+function guardarResetPassword() {
+    const u = document.getElementById('rsUser').value.trim();
+    const p = document.getElementById('rsPass').value;
+    const p2 = document.getElementById('rsPass2').value;
+    const err = document.getElementById('loginError');
+    if (!u || !p) { err.textContent='Rellena usuario y contraseña.'; err.style.display='block'; return; }
+    if (p !== p2) { err.textContent='Las contraseñas no coinciden.'; err.style.display='block'; return; }
+    if (p.length < 4) { err.textContent='La contraseña debe tener al menos 4 caracteres.'; err.style.display='block'; return; }
+    _auth = { user: u, pass: p, pregunta: (_auth&&_auth.pregunta)||'', respuesta: (_auth&&_auth.respuesta)||'' };
+    guardar();
+    modoEdicion = true;
+    sessionStorage.setItem('vac_editor', '1');
+    document.getElementById('loginBtnConfirm').setAttribute('onclick','hacerLogin()');
+    cerrarLogin();
+    aplicarModo();
+    alert('Contraseña restablecida. Ya estás en modo edición.');
 }
 
 function aplicarModo() {
